@@ -118,6 +118,7 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">生產編號</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">組裝編號</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">料號</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">修改內容</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">開始日期</th>
@@ -323,6 +324,7 @@
                     }
                     await updateDoc(docRef, {
                         productionId: tr.querySelector('.edit-productionId').value,
+                        assemblyId: tr.querySelector('.edit-assemblyId').value,
                         partNumber: tr.querySelector('.edit-partNumber').value,
                         content: tr.querySelector('.edit-content').value,
                         startDate: newStartDate,
@@ -340,7 +342,7 @@
 
             const tasks = items.filter(item => item.startDate && item.endDate).map(item => ({
                 id: item.id,
-                name: `${item.productionId} / ${item.partNumber}`,
+                name: item.content, // **變更點：將名稱改為顯示修改內容**
                 start: item.startDate,
                 end: item.endDate,
                 progress: item.completed ? 100 : 0,
@@ -376,6 +378,7 @@
                 tr.innerHTML = isEditing ? `
                     <td class="px-4 py-3"><input type="checkbox" class="h-5 w-5 toggle-complete" ${item.completed ? 'checked' : ''}></td>
                     <td class="px-4 py-3"><input type="text" class="edit-input edit-productionId" value="${item.productionId}"></td>
+                    <td class="px-4 py-3"><input type="text" class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td>
                     <td class="px-4 py-3"><input type="text" class="edit-input edit-partNumber" value="${item.partNumber}"></td>
                     <td class="px-4 py-3"><textarea class="edit-input edit-content">${item.content}</textarea></td>
                     <td class="px-4 py-3"><input type="date" class="edit-input edit-startDate" value="${item.startDate || ''}"></td>
@@ -384,6 +387,7 @@
                 ` : `
                     <td class="px-4 py-3"><input type="checkbox" class="h-5 w-5 toggle-complete" ${item.completed ? 'checked' : ''}></td>
                     <td class="px-4 py-3">${item.productionId}</td>
+                    <td class="px-4 py-3">${item.assemblyId || '-'}</td>
                     <td class="px-4 py-3">${item.partNumber}</td>
                     <td class="px-4 py-3 max-w-xs truncate" title="${item.content}">${item.content}</td>
                     <td class="px-4 py-3">${item.startDate || 'N/A'}</td>
