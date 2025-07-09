@@ -116,16 +116,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase 設定 ---
-        // Canvas 環境會自動提供這些變數，您無需手動更改。
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // 初始化 Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
         // DOM 元素
         const addItemForm = document.getElementById('addItemForm');
         const itemsList = document.getElementById('itemsList');
@@ -138,42 +128,128 @@
         const authStatus = document.getElementById('auth-status');
         const submitButton = addItemForm.querySelector('button[type="submit"]');
 
-        let allItems = []; // 用於儲存從 Firebase 獲取的所有項目
-        let unsubscribe = null; // 用於儲存監聽器，以便在需要時取消訂閱
+        let allItems = [];
+        let unsubscribe = null;
 
         // 將今天的日期設置為預設值
         dateInput.valueAsDate = new Date();
 
-        // --- 更改點：設定一個公開的、所有使用者共享的資料路徑 ---
-        const collectionPath = `/artifacts/${appId}/public/data/sharedTodoItems`;
-        const itemsCollectionRef = collection(db, collectionPath);
+        // --- Firebase 設定 ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+        // --- 檢查 Firebase 設定是否有效 ---
+        if (!firebaseConfig.apiKey) {
+            const errorMessage = "錯誤：找不到 Firebase 設定。請確保此應用程式已正確連接到 Firebase 專案。";
+            console.error(errorMessage);
+            authStatus.textContent = errorMessage;
+            // 禁用整個表單
+            Array.from(addItemForm.elements).forEach(el => el.disabled = true);
+        } else {
+            // 初始化 Firebase
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
 
-        // --- Firebase 驗證 ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // 使用者已登入
-                authStatus.textContent = `已連線 | 公開共享模式`;
-                submitButton.disabled = false; // 啟用新增按鈕
-                
-                // 開始監聽資料庫變更
-                listenForItems();
+            const collectionPath = `/artifacts/${appId}/public/data/sharedTodoItems`;
+            const itemsCollectionRef = collection(db, collectionPath);
 
-            } else {
-                // 使用者未登入，嘗試登入
-                authStatus.textContent = '正在驗證身份...';
-                try {
-                    if (typeof __initial_auth_token !== 'undefined') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
+            // --- Firebase 驗證 ---
+            onAuthStateChanged(auth, async (user) => {
+                console.log("Auth state changed. User:", user);
+                if (user) {
+                    console.log("使用者已驗證, UID:", user.uid);
+                    authStatus.textContent = `已連線 | 公開共享模式`;
+                    submitButton.disabled = false;
+                    listenForItems(itemsCollectionRef);
+                } else {
+                    console.log("使用者未驗證，正在嘗試匿名登入...");
+                    authStatus.textContent = '正在驗證身份...';
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined') {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        console.log("登入成功。");
+                    } catch (error) {
+                        console.error("Firebase 登入失敗:", error);
+                        authStatus.textContent = '錯誤：無法連接。請檢查主控台(F12)錯誤，並確認 Firebase 已啟用「匿名登入」。';
+                        submitButton.disabled = true;
                     }
-                } catch (error) {
-                    console.error("Firebase 登入失敗:", error);
-                    authStatus.textContent = '錯誤：無法連接到資料庫。';
                 }
-            }
-        });
+            });
+
+            // 監聽 Firestore 資料變更
+            const listenForItems = (collectionRef) => {
+                if (unsubscribe) unsubscribe();
+                unsubscribe = onSnapshot(collectionRef, (snapshot) => {
+                    allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    if (allItems.length > 0 && allItems[0].createdAt) {
+                        allItems.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+                    }
+                    renderItems(searchInput.value);
+                }, (error) => {
+                    console.error("監聽資料時發生錯誤: ", error);
+                });
+            };
+
+            // 新增項目到 Firestore
+            addItemForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const imageFile = document.getElementById('imageUpload').files[0];
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const newItem = {
+                        productionId: document.getElementById('productionId').value,
+                        assemblyId: document.getElementById('assemblyId').value,
+                        partNumber: document.getElementById('partNumber').value,
+                        content: document.getElementById('content').value,
+                        date: document.getElementById('date').value,
+                        image: reader.result,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    };
+                    try {
+                        await addDoc(itemsCollectionRef, newItem);
+                        addItemForm.reset();
+                        dateInput.valueAsDate = new Date();
+                    } catch (error) {
+                        console.error("新增文件時出錯: ", error);
+                        alert("新增項目失敗，請檢查主控台錯誤訊息。");
+                    }
+                };
+                if (imageFile) {
+                    reader.readAsDataURL(imageFile);
+                } else {
+                    reader.onloadend();
+                }
+            });
+
+            // 事件代理：處理完成、刪除和圖片預覽
+            itemsList.addEventListener('click', async (e) => {
+                const target = e.target;
+                const tr = target.closest('tr');
+                if (!tr) return;
+                const id = tr.dataset.id;
+                const docRef = doc(itemsCollectionRef, id);
+
+                if (target.classList.contains('toggle-complete')) {
+                    const item = allItems.find(i => i.id === id);
+                    await updateDoc(docRef, { completed: !item.completed });
+                } else if (target.classList.contains('delete-item')) {
+                    if (confirm('您確定要刪除這個項目嗎？')) {
+                        await deleteDoc(docRef);
+                    }
+                } else if (target.classList.contains('view-image')) {
+                    const item = allItems.find(i => i.id === id);
+                    if (item && item.image) {
+                        modalImage.src = item.image;
+                        imageModal.classList.remove('hidden');
+                    }
+                }
+            });
+        }
 
         // 渲染項目列表
         const renderItems = (filter = '') => {
@@ -183,155 +259,35 @@
                 item.assemblyId.toLowerCase().includes(lowerCaseFilter) ||
                 item.partNumber.toLowerCase().includes(lowerCaseFilter)
             );
-            
             itemsList.innerHTML = '';
             noResults.classList.toggle('hidden', filteredItems.length > 0);
-
             filteredItems.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.dataset.id = item.id;
                 if (item.completed) {
                     tr.classList.add('completed', 'bg-gray-50');
                 }
-
                 tr.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}>
-                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap"><input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td>
                     <td class="px-4 py-3 whitespace-nowrap">${item.productionId}</td>
                     <td class="px-4 py-3 whitespace-nowrap">${item.assemblyId}</td>
                     <td class="px-4 py-3 whitespace-nowrap">${item.partNumber}</td>
                     <td class="px-4 py-3 max-w-xs truncate" title="${item.content}">${item.content}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        ${item.image ? `<button class="text-indigo-600 hover:text-indigo-900 view-image">預覽</button>` : '無'}
-                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">${item.image ? `<button class="text-indigo-600 hover:text-indigo-900 view-image">預覽</button>` : '無'}</td>
                     <td class="px-4 py-3 whitespace-nowrap">${item.date}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <button class="text-red-600 hover:text-red-900 delete-item">刪除</button>
-                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap"><button class="text-red-600 hover:text-red-900 delete-item">刪除</button></td>
                 `;
                 itemsList.appendChild(tr);
             });
         };
-        
-        // 監聽 Firestore 資料變更
-        const listenForItems = () => {
-            // 如果已經在監聽，先取消舊的監聽器，避免重複
-            if (unsubscribe) {
-                unsubscribe();
-            }
-            
-            unsubscribe = onSnapshot(itemsCollectionRef, (snapshot) => {
-                allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // 預設按建立時間排序 (如果有的話)，否則保持原樣
-                if (allItems.length > 0 && allItems[0].createdAt) {
-                    allItems.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-                }
-                renderItems(searchInput.value); // 使用當前搜尋條件重新渲染
-            }, (error) => {
-                console.error("監聽資料時發生錯誤: ", error);
-            });
-        };
-
-        // 新增項目到 Firestore
-        addItemForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!itemsCollectionRef) {
-                alert("錯誤：尚未連接到資料庫，無法新增項目。");
-                return;
-            }
-
-            const productionId = document.getElementById('productionId').value;
-            const assemblyId = document.getElementById('assemblyId').value;
-            const partNumber = document.getElementById('partNumber').value;
-            const content = document.getElementById('content').value;
-            const date = document.getElementById('date').value;
-            const imageFile = document.getElementById('imageUpload').files[0];
-
-            const reader = new FileReader();
-            
-            reader.onloadend = async () => {
-                const newItem = {
-                    productionId,
-                    assemblyId,
-                    partNumber,
-                    content,
-                    date,
-                    image: reader.result, // Base64 string or null
-                    completed: false,
-                    createdAt: serverTimestamp() // 添加伺服器時間戳
-                };
-                
-                try {
-                    await addDoc(itemsCollectionRef, newItem);
-                    addItemForm.reset();
-                    dateInput.valueAsDate = new Date(); // 重置日期
-                } catch (error) {
-                    console.error("新增文件時出錯: ", error);
-                    alert("新增項目失敗，請檢查主控台錯誤訊息。");
-                }
-            };
-
-            if (imageFile) {
-                reader.readAsDataURL(imageFile);
-            } else {
-                reader.onloadend(); // 如果沒有圖片，直接觸發 onloadend
-            }
-        });
 
         // 搜尋功能
-        searchInput.addEventListener('input', () => {
-            renderItems(searchInput.value);
-        });
-
-        // 事件代理：處理完成、刪除和圖片預覽
-        itemsList.addEventListener('click', async (e) => {
-            if (!itemsCollectionRef) return;
-            const target = e.target;
-            const tr = target.closest('tr');
-            if (!tr) return;
-            const id = tr.dataset.id;
-            const docRef = doc(itemsCollectionRef, id);
-
-            // 切換完成狀態
-            if (target.classList.contains('toggle-complete')) {
-                const item = allItems.find(i => i.id === id);
-                try {
-                    await updateDoc(docRef, { completed: !item.completed });
-                } catch (error) {
-                    console.error("更新文件時出錯: ", error);
-                }
-            }
-
-            // 刪除項目
-            if (target.classList.contains('delete-item')) {
-                if (confirm('您確定要刪除這個項目嗎？')) {
-                    try {
-                        await deleteDoc(docRef);
-                    } catch (error) {
-                        console.error("刪除文件時出錯: ", error);
-                    }
-                }
-            }
-            
-            // 預覽圖片
-            if (target.classList.contains('view-image')) {
-                const item = allItems.find(i => i.id === id);
-                if (item && item.image) {
-                    modalImage.src = item.image;
-                    imageModal.classList.remove('hidden');
-                }
-            }
-        });
+        searchInput.addEventListener('input', () => renderItems(searchInput.value));
 
         // 關閉圖片預覽 Modal
-        closeModal.addEventListener('click', () => {
-            imageModal.classList.add('hidden');
-        });
+        closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
         imageModal.addEventListener('click', (e) => {
-            if (e.target === imageModal) {
-                imageModal.classList.add('hidden');
-            }
+            if (e.target === imageModal) imageModal.classList.add('hidden');
         });
 
     </script>
