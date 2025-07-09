@@ -135,15 +135,32 @@
         dateInput.valueAsDate = new Date();
 
         // --- Firebase 設定 ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // 1. 自動偵測環境設定 (優先)
+        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // 2. 如果自動偵測失敗，請在此處手動貼上您的 Firebase 設定物件
+        const manualFirebaseConfig = {
+            // apiKey: "AIza...",
+            // authDomain: "...",
+            // projectId: "...",
+            // storageBucket: "...",
+            // messagingSenderId: "...",
+            // appId: "..."
+        };
+
+        // 如果自動設定不存在，則使用手動設定
+        if (!firebaseConfig) {
+            firebaseConfig = manualFirebaseConfig;
+        }
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : (firebaseConfig.projectId || 'default-app-id');
 
         // --- 檢查 Firebase 設定是否有效 ---
-        if (!firebaseConfig.apiKey) {
-            const errorMessage = "錯誤：找不到 Firebase 設定。請確保此應用程式已正確連接到 Firebase 專案。";
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+            const errorMessage = "錯誤：找不到 Firebase 設定。請在此程式碼中手動貼上您的設定，或確保環境已正確連接。";
             console.error(errorMessage);
             authStatus.textContent = errorMessage;
-            // 禁用整個表單
+            authStatus.style.color = 'red';
             Array.from(addItemForm.elements).forEach(el => el.disabled = true);
         } else {
             // 初始化 Firebase
@@ -156,14 +173,11 @@
 
             // --- Firebase 驗證 ---
             onAuthStateChanged(auth, async (user) => {
-                console.log("Auth state changed. User:", user);
                 if (user) {
-                    console.log("使用者已驗證, UID:", user.uid);
                     authStatus.textContent = `已連線 | 公開共享模式`;
                     submitButton.disabled = false;
                     listenForItems(itemsCollectionRef);
                 } else {
-                    console.log("使用者未驗證，正在嘗試匿名登入...");
                     authStatus.textContent = '正在驗證身份...';
                     try {
                         if (typeof __initial_auth_token !== 'undefined') {
@@ -171,7 +185,6 @@
                         } else {
                             await signInAnonymously(auth);
                         }
-                        console.log("登入成功。");
                     } catch (error) {
                         console.error("Firebase 登入失敗:", error);
                         authStatus.textContent = '錯誤：無法連接。請檢查主控台(F12)錯誤，並確認 Firebase 已啟用「匿名登入」。';
