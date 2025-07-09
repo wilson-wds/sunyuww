@@ -140,16 +140,16 @@
         
         // 2. 如果自動偵測失敗，請在此處手動貼上您的 Firebase 設定物件
         const manualFirebaseConfig = {
-            // apiKey: "AIza...",
-            // authDomain: "...",
-            // projectId: "...",
-            // storageBucket: "...",
-            // messagingSenderId: "...",
-            // appId: "..."
+            apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q",
+            authDomain: "sunyu-check.firebaseapp.com",
+            projectId: "sunyu-check",
+            storageBucket: "sunyu-check.firebasestorage.app",
+            messagingSenderId: "627211744361",
+            appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8"
         };
 
         // 如果自動設定不存在，則使用手動設定
-        if (!firebaseConfig) {
+        if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
             firebaseConfig = manualFirebaseConfig;
         }
 
