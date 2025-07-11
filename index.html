@@ -43,6 +43,10 @@
         .toggle-expand.expanded {
             transform: rotate(90deg);
         }
+        .new-item-highlight {
+            background-color: #fef9c3; /* yellow-100 */
+            transition: background-color 1.5s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -250,10 +254,18 @@
             };
             const listenForProdItems = () => {
                 if (unsubscribeProd) unsubscribeProd();
+                console.log("Setting up production items listener...");
                 unsubscribeProd = onSnapshot(prodCollectionRef, (snapshot) => {
+                    console.log(`Prod listener fired: ${snapshot.docs.length} items found.`);
+                    const oldItemIds = new Set(allProdItems.map(item => item.id));
                     allProdItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     allProdItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                    renderProdItems(prodSearchInput.value);
+                    
+                    const newItems = allProdItems.filter(item => !oldItemIds.has(item.id));
+                    const newlyAddedId = newItems.length > 0 ? newItems[0].id : null;
+                    if(newlyAddedId) console.log(`Newly added item ID: ${newlyAddedId}`);
+
+                    renderProdItems(prodSearchInput.value, newlyAddedId);
                 });
             };
 
@@ -415,9 +427,11 @@
             });
         };
 
-        const renderProdItems = (filter = '') => {
+        const renderProdItems = (filter = '', newlyAddedId = null) => {
+            console.log(`Rendering prod items. Filter: "${filter}", New ID: ${newlyAddedId}`);
             const parents = allProdItems.filter(item => !item.parentPartNumber);
             const children = allProdItems.filter(item => item.parentPartNumber);
+            console.log(`Found ${parents.length} parents and ${children.length} children.`);
 
             let finalParentsToShow = parents;
             if (filter) {
@@ -454,6 +468,10 @@
                     parentTr.innerHTML = `<td>${expanderIcon}</td><td><span class="status-badge ${statusClasses}">${parent.status || 'N/A'}</span></td><td>${parent.partNumber}</td><td>${parent.productionId}</td><td>${parent.assemblyId || '-'}</td><td>${parent.quantity}</td><td>${parent.process}</td><td>${parent.handoverDate}</td><td>${parent.completionDate}</td><td><button class="edit-item text-indigo-600">編輯</button><button class="delete-item text-red-600 ml-2">刪除</button></td>`;
                 }
                 prodItemsList.appendChild(parentTr);
+                if(parent.id === newlyAddedId) {
+                    parentTr.classList.add('new-item-highlight');
+                    setTimeout(() => parentTr.classList.remove('new-item-highlight'), 2000);
+                }
 
                 childItems.forEach(child => {
                     const childIsEditing = child.id === editingItemId;
@@ -470,6 +488,14 @@
                         childTr.innerHTML = `<td></td><td><span class="status-badge ${childStatusClasses}">${child.status || 'N/A'}</span></td><td class="pl-8">${child.partNumber}</td><td>${child.productionId}</td><td>${child.assemblyId || '-'}</td><td>${child.quantity}</td><td>${child.process}</td><td>${child.handoverDate}</td><td>${child.completionDate}</td><td><button class="edit-item text-indigo-600">編輯</button><button class="delete-item text-red-600 ml-2">刪除</button></td>`;
                     }
                     prodItemsList.appendChild(childTr);
+                    if(child.id === newlyAddedId) {
+                        childTr.classList.remove('hidden');
+                        childTr.classList.add('new-item-highlight');
+                        setTimeout(() => childTr.classList.remove('new-item-highlight'), 2000);
+                        // Also expand parent
+                        const parentRow = prodItemsList.querySelector(`[data-id="${child.parentPartNumber}"]`);
+                        if(parentRow) parentRow.querySelector('.toggle-expand')?.classList.add('expanded');
+                    }
                 });
             });
         };
