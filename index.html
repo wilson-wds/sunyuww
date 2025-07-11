@@ -266,18 +266,22 @@
                 }
                 const reader = new FileReader();
                 reader.onloadend = async () => {
-                    await addDoc(todoCollectionRef, {
-                        productionId: document.getElementById('todo-productionId').value,
-                        assemblyId: document.getElementById('todo-assemblyId').value,
-                        partNumber: document.getElementById('todo-partNumber').value,
-                        content: document.getElementById('todo-content').value,
-                        date: document.getElementById('todo-date').value,
-                        image: reader.result || null,
-                        completed: false,
-                        createdAt: serverTimestamp()
-                    });
-                    addItemForm.reset();
-                    document.getElementById('todo-date').valueAsDate = new Date();
+                    try {
+                        await addDoc(todoCollectionRef, {
+                            productionId: document.getElementById('todo-productionId').value,
+                            assemblyId: document.getElementById('todo-assemblyId').value,
+                            partNumber: document.getElementById('todo-partNumber').value,
+                            content: document.getElementById('todo-content').value,
+                            date: document.getElementById('todo-date').value,
+                            image: reader.result || null,
+                            completed: false,
+                            createdAt: serverTimestamp()
+                        });
+                        addItemForm.reset();
+                        document.getElementById('todo-date').valueAsDate = new Date();
+                    } catch (error) {
+                        showNotification(`新增待辦失敗: ${error.message}`);
+                    }
                 };
                 if (imageFile) reader.readAsDataURL(imageFile);
                 else reader.onloadend();
@@ -291,20 +295,25 @@
                     showNotification("完成日不能早于交接日。");
                     return;
                 }
-                await addDoc(prodCollectionRef, {
-                    partNumber: document.getElementById('prod-partNumber').value,
-                    productionId: document.getElementById('prod-productionId').value,
-                    assemblyId: document.getElementById('prod-assemblyId').value,
-                    quantity: Number(document.getElementById('prod-quantity').value),
-                    process: document.getElementById('prod-process').value,
-                    handoverDate,
-                    completionDate,
-                    status: '待發包', // 預設狀態
-                    createdAt: serverTimestamp()
-                });
-                addProdForm.reset();
-                document.getElementById('prod-handoverDate').valueAsDate = new Date();
-                document.getElementById('prod-completionDate').valueAsDate = new Date();
+                try {
+                    await addDoc(prodCollectionRef, {
+                        partNumber: document.getElementById('prod-partNumber').value,
+                        productionId: document.getElementById('prod-productionId').value,
+                        assemblyId: document.getElementById('prod-assemblyId').value,
+                        quantity: Number(document.getElementById('prod-quantity').value),
+                        process: document.getElementById('prod-process').value,
+                        handoverDate,
+                        completionDate,
+                        status: '待發包', // 預設狀態
+                        createdAt: serverTimestamp()
+                    });
+                    addProdForm.reset();
+                    document.getElementById('prod-handoverDate').valueAsDate = new Date();
+                    document.getElementById('prod-completionDate').valueAsDate = new Date();
+                } catch (error) {
+                    console.error("新增生管流程失敗:", error);
+                    showNotification(`新增流程失敗: ${error.message}`);
+                }
             });
 
             // --- 列表事件代理 ---
@@ -336,28 +345,32 @@
                     isTodoView ? renderTodoItems() : renderProdItems();
                 } else if (target.classList.contains('save-item')) {
                     let updatedData = {};
-                    if (isTodoView) {
-                        updatedData = {
-                            productionId: tr.querySelector('.edit-productionId').value,
-                            assemblyId: tr.querySelector('.edit-assemblyId').value,
-                            partNumber: tr.querySelector('.edit-partNumber').value,
-                            content: tr.querySelector('.edit-content').value,
-                            date: tr.querySelector('.edit-date').value,
-                        };
-                    } else { // prod view
-                         updatedData = {
-                            partNumber: tr.querySelector('.edit-partNumber').value,
-                            productionId: tr.querySelector('.edit-productionId').value,
-                            assemblyId: tr.querySelector('.edit-assemblyId').value,
-                            quantity: Number(tr.querySelector('.edit-quantity').value),
-                            process: tr.querySelector('.edit-process').value,
-                            handoverDate: tr.querySelector('.edit-handoverDate').value,
-                            completionDate: tr.querySelector('.edit-completionDate').value,
-                            status: tr.querySelector('.edit-status').value, // 儲存新的狀態
-                        };
+                    try {
+                        if (isTodoView) {
+                            updatedData = {
+                                productionId: tr.querySelector('.edit-productionId').value,
+                                assemblyId: tr.querySelector('.edit-assemblyId').value,
+                                partNumber: tr.querySelector('.edit-partNumber').value,
+                                content: tr.querySelector('.edit-content').value,
+                                date: tr.querySelector('.edit-date').value,
+                            };
+                        } else { // prod view
+                             updatedData = {
+                                partNumber: tr.querySelector('.edit-partNumber').value,
+                                productionId: tr.querySelector('.edit-productionId').value,
+                                assemblyId: tr.querySelector('.edit-assemblyId').value,
+                                quantity: Number(tr.querySelector('.edit-quantity').value),
+                                process: tr.querySelector('.edit-process').value,
+                                handoverDate: tr.querySelector('.edit-handoverDate').value,
+                                completionDate: tr.querySelector('.edit-completionDate').value,
+                                status: tr.querySelector('.edit-status').value, // 儲存新的狀態
+                            };
+                        }
+                        await updateDoc(docRef, updatedData);
+                        editingItemId = null;
+                    } catch(error) {
+                        showNotification(`儲存失敗: ${error.message}`);
                     }
-                    await updateDoc(docRef, updatedData);
-                    editingItemId = null;
                 }
             });
         }
