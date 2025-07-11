@@ -104,7 +104,7 @@
                 <!-- 待辦事項列表 (預設顯示) -->
                 <div id="todo-list-view">
                     <h2 class="text-2xl font-bold mb-6 border-b pb-3">待修改明細</h2>
-                    <input type="text" id="todo-searchInput" placeholder="查詢..." class="w-full mb-4 px-3 py-2 border rounded-md">
+                    <input type="text" id="todo-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full mb-4 px-3 py-2 border rounded-md">
                     <div class="table-container">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50"><tr><th>狀態</th><th>生產編號</th><th>組裝編號</th><th>料號</th><th>修改內容</th><th>圖片</th><th>日期</th><th>操作</th></tr></thead>
@@ -116,7 +116,7 @@
                 <!-- 生管流程列表 (預設隱藏) -->
                 <div id="prod-list-view" class="hidden">
                     <h2 class="text-2xl font-bold mb-6 border-b pb-3">生管發包明細</h2>
-                    <input type="text" id="prod-searchInput" placeholder="查詢..." class="w-full mb-4 px-3 py-2 border rounded-md">
+                    <input type="text" id="prod-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full mb-4 px-3 py-2 border rounded-md">
                     <div class="table-container">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50"><tr><th class="w-12"></th><th>進度狀態</th><th>料號</th><th>生產編號</th><th>組裝編號</th><th>數量</th><th>製程</th><th>交接日</th><th>完成日</th><th>操作</th></tr></thead>
@@ -365,8 +365,9 @@
                                 date: tr.querySelector('.edit-date').value,
                             };
                         } else {
+                             const parentInput = tr.querySelector('.edit-parentPartNumber');
                              updatedData = {
-                                parentPartNumber: tr.querySelector('.edit-parentPartNumber')?.value.trim() || null,
+                                parentPartNumber: parentInput ? parentInput.value.trim() || null : null,
                                 partNumber: tr.querySelector('.edit-partNumber').value,
                                 productionId: tr.querySelector('.edit-productionId').value,
                                 assemblyId: tr.querySelector('.edit-assemblyId').value,
@@ -399,7 +400,8 @@
         };
 
         const renderTodoItems = (filter = '') => {
-            const list = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(filter) || item.assemblyId?.toLowerCase().includes(filter) || item.partNumber?.toLowerCase().includes(filter));
+            const lowerFilter = filter.toLowerCase();
+            const list = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(lowerFilter) || item.assemblyId?.toLowerCase().includes(lowerFilter) || item.partNumber?.toLowerCase().includes(lowerFilter));
             todoItemsList.innerHTML = '';
             document.getElementById('todo-no-results').classList.toggle('hidden', list.length > 0);
             list.forEach(item => {
@@ -417,20 +419,25 @@
             const parents = allProdItems.filter(item => !item.parentPartNumber);
             const children = allProdItems.filter(item => item.parentPartNumber);
 
-            let filteredParents = parents;
+            let finalParentsToShow = parents;
             if (filter) {
                 const lowerFilter = filter.toLowerCase();
-                const parentMatches = parents.filter(p => p.partNumber.toLowerCase().includes(lowerFilter) || p.productionId.toLowerCase().includes(lowerFilter));
-                const childMatches = children.filter(c => c.partNumber.toLowerCase().includes(lowerFilter) || c.productionId.toLowerCase().includes(lowerFilter));
-                const parentIdsFromChildMatches = new Set(childMatches.map(c => c.parentPartNumber));
-                const parentsFromChildMatches = parents.filter(p => parentIdsFromChildMatches.has(p.partNumber));
-                filteredParents = [...new Set([...parentMatches, ...parentsFromChildMatches])];
+                const parentPartNumbersFromChildMatches = new Set();
+                children.forEach(child => {
+                    if (child.partNumber?.toLowerCase().includes(lowerFilter) || child.productionId?.toLowerCase().includes(lowerFilter) || child.assemblyId?.toLowerCase().includes(lowerFilter)) {
+                        parentPartNumbersFromChildMatches.add(child.parentPartNumber);
+                    }
+                });
+                finalParentsToShow = parents.filter(parent => {
+                    const isDirectMatch = parent.partNumber?.toLowerCase().includes(lowerFilter) || parent.productionId?.toLowerCase().includes(lowerFilter) || parent.assemblyId?.toLowerCase().includes(lowerFilter);
+                    return isDirectMatch || parentPartNumbersFromChildMatches.has(parent.partNumber);
+                });
             }
             
             prodItemsList.innerHTML = '';
-            document.getElementById('prod-no-results').classList.toggle('hidden', filteredParents.length > 0);
+            document.getElementById('prod-no-results').classList.toggle('hidden', finalParentsToShow.length > 0);
 
-            filteredParents.forEach(parent => {
+            finalParentsToShow.forEach(parent => {
                 const parentIsEditing = parent.id === editingItemId;
                 const parentTr = document.createElement('tr');
                 parentTr.dataset.id = parent.id;
