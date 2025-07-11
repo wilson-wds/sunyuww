@@ -36,6 +36,13 @@
             font-size: 0.75rem;
             white-space: nowrap;
         }
+        .toggle-expand {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .toggle-expand.expanded {
+            transform: rotate(90deg);
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -77,9 +84,10 @@
                 </div>
                 <!-- 生管流程表單 (預設隱藏) -->
                 <div id="prod-form-view" class="hidden">
-                    <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新生管流程</h2>
+                    <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新生管項目</h2>
                     <form id="addProdForm" class="space-y-4">
-                        <input type="text" id="prod-partNumber" placeholder="料號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <input type="text" id="prod-parentPartNumber" placeholder="主料號 (可選，用於子項目)" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <input type="text" id="prod-partNumber" placeholder="料號 / 子料號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                         <input type="text" id="prod-productionId" placeholder="生產編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                         <input type="text" id="prod-assemblyId" placeholder="組裝編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                         <input type="number" id="prod-quantity" placeholder="數量" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
@@ -111,7 +119,7 @@
                     <input type="text" id="prod-searchInput" placeholder="查詢..." class="w-full mb-4 px-3 py-2 border rounded-md">
                     <div class="table-container">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50"><tr><th>進度狀態</th><th>料號</th><th>生產編號</th><th>組裝編號</th><th>數量</th><th>製程</th><th>交接日</th><th>完成日</th><th>操作</th></tr></thead>
+                            <thead class="bg-gray-50"><tr><th class="w-12"></th><th>進度狀態</th><th>料號</th><th>生產編號</th><th>組裝編號</th><th>數量</th><th>製程</th><th>交接日</th><th>完成日</th><th>操作</th></tr></thead>
                             <tbody id="prod-itemsList"></tbody>
                         </table>
                     </div>
@@ -134,24 +142,19 @@
         // --- DOM 元素 ---
         const mainTabTodo = document.getElementById('main-tab-todo');
         const mainTabProd = document.getElementById('main-tab-prod');
-        // Forms
         const todoFormView = document.getElementById('todo-form-view');
         const prodFormView = document.getElementById('prod-form-view');
         const addItemForm = document.getElementById('addItemForm');
         const addProdForm = document.getElementById('addProdForm');
-        // Lists
         const todoListView = document.getElementById('todo-list-view');
         const prodListView = document.getElementById('prod-list-view');
         const todoItemsList = document.getElementById('todo-itemsList');
         const prodItemsList = document.getElementById('prod-itemsList');
         const todoSearchInput = document.getElementById('todo-searchInput');
         const prodSearchInput = document.getElementById('prod-searchInput');
-        // Other
         const authStatus = document.getElementById('auth-status');
         const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
         const prodSubmitButton = addProdForm.querySelector('button[type="submit"]');
-
-        // Modals
         const imageModal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
         const closeModal = document.getElementById('closeModal');
@@ -170,7 +173,7 @@
         let unsubscribeProd = null;
         let confirmCallback = null;
         let editingItemId = null;
-        let currentView = 'todo'; // 'todo' or 'prod'
+        let currentView = 'todo';
         const prodStatuses = ['待發包', '已發包', '生產中', '已完工', '已入庫'];
 
         // --- 日期初始化 ---
@@ -181,12 +184,10 @@
         // --- 主分頁切換 ---
         const switchMainTab = (view) => {
             currentView = view;
-            editingItemId = null; // 切換分頁時取消編輯狀態
+            editingItemId = null;
             const isTodo = view === 'todo';
-            
             mainTabTodo.className = isTodo ? 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600' : 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
             mainTabProd.className = !isTodo ? 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600' : 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
-
             todoFormView.classList.toggle('hidden', !isTodo);
             prodFormView.classList.toggle('hidden', isTodo);
             todoListView.classList.toggle('hidden', !isTodo);
@@ -297,6 +298,7 @@
                 }
                 try {
                     await addDoc(prodCollectionRef, {
+                        parentPartNumber: document.getElementById('prod-parentPartNumber').value.trim() || null,
                         partNumber: document.getElementById('prod-partNumber').value,
                         productionId: document.getElementById('prod-productionId').value,
                         assemblyId: document.getElementById('prod-assemblyId').value,
@@ -304,14 +306,13 @@
                         process: document.getElementById('prod-process').value,
                         handoverDate,
                         completionDate,
-                        status: '待發包', // 預設狀態
+                        status: '待發包',
                         createdAt: serverTimestamp()
                     });
                     addProdForm.reset();
                     document.getElementById('prod-handoverDate').valueAsDate = new Date();
                     document.getElementById('prod-completionDate').valueAsDate = new Date();
                 } catch (error) {
-                    console.error("新增生管流程失敗:", error);
                     showNotification(`新增流程失敗: ${error.message}`);
                 }
             });
@@ -321,12 +322,21 @@
                 const target = e.target;
                 const tr = target.closest('tr');
                 if (!tr) return;
+
+                if (target.classList.contains('toggle-expand')) {
+                    const parentId = tr.dataset.id;
+                    const childRows = prodItemsList.querySelectorAll(`[data-parent-id="${parentId}"]`);
+                    childRows.forEach(row => row.classList.toggle('hidden'));
+                    target.classList.toggle('expanded');
+                    return;
+                }
+
                 const id = tr.dataset.id;
                 const isTodoView = currentView === 'todo';
                 const collectionRef = isTodoView ? todoCollectionRef : prodCollectionRef;
                 const docRef = doc(collectionRef, id);
 
-                if (target.classList.contains('toggle-complete')) { // 僅用於待辦事項
+                if (target.classList.contains('toggle-complete')) {
                     const item = allTodoItems.find(i => i.id === id);
                     await updateDoc(docRef, { completed: !item.completed });
                 } else if (target.classList.contains('delete-item')) {
@@ -354,8 +364,9 @@
                                 content: tr.querySelector('.edit-content').value,
                                 date: tr.querySelector('.edit-date').value,
                             };
-                        } else { // prod view
+                        } else {
                              updatedData = {
+                                parentPartNumber: tr.querySelector('.edit-parentPartNumber')?.value.trim() || null,
                                 partNumber: tr.querySelector('.edit-partNumber').value,
                                 productionId: tr.querySelector('.edit-productionId').value,
                                 assemblyId: tr.querySelector('.edit-assemblyId').value,
@@ -363,7 +374,7 @@
                                 process: tr.querySelector('.edit-process').value,
                                 handoverDate: tr.querySelector('.edit-handoverDate').value,
                                 completionDate: tr.querySelector('.edit-completionDate').value,
-                                status: tr.querySelector('.edit-status').value, // 儲存新的狀態
+                                status: tr.querySelector('.edit-status').value,
                             };
                         }
                         await updateDoc(docRef, updatedData);
@@ -403,24 +414,56 @@
         };
 
         const renderProdItems = (filter = '') => {
-            const list = allProdItems.filter(item => item.productionId?.toLowerCase().includes(filter) || item.partNumber?.toLowerCase().includes(filter));
-            prodItemsList.innerHTML = '';
-            document.getElementById('prod-no-results').classList.toggle('hidden', list.length > 0);
-            list.forEach(item => {
-                const isEditing = item.id === editingItemId;
-                const tr = document.createElement('tr');
-                tr.dataset.id = item.id;
-                
-                const statusClasses = getStatusClasses(item.status);
-                tr.className = `transition-colors duration-300 ${isEditing ? 'bg-white' : statusClasses.split(' ')[0].replace('200', '50')}`;
+            const parents = allProdItems.filter(item => !item.parentPartNumber);
+            const children = allProdItems.filter(item => item.parentPartNumber);
 
-                if (isEditing) {
-                    const options = prodStatuses.map(s => `<option value="${s}" ${s === item.status ? 'selected' : ''}>${s}</option>`).join('');
-                    tr.innerHTML = `<td><select class="edit-input edit-status">${options}</select></td><td><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td><input class="edit-input edit-productionId" value="${item.productionId}"></td><td><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td><input type="number" class="edit-input edit-quantity" value="${item.quantity}"></td><td><input class="edit-input edit-process" value="${item.process}"></td><td><input type="date" class="edit-input edit-handoverDate" value="${item.handoverDate}"></td><td><input type="date" class="edit-input edit-completionDate" value="${item.completionDate}"></td><td><button class="save-item text-green-600">儲存</button><button class="cancel-edit ml-2">取消</button></td>`;
+            let filteredParents = parents;
+            if (filter) {
+                const lowerFilter = filter.toLowerCase();
+                const parentMatches = parents.filter(p => p.partNumber.toLowerCase().includes(lowerFilter) || p.productionId.toLowerCase().includes(lowerFilter));
+                const childMatches = children.filter(c => c.partNumber.toLowerCase().includes(lowerFilter) || c.productionId.toLowerCase().includes(lowerFilter));
+                const parentIdsFromChildMatches = new Set(childMatches.map(c => c.parentPartNumber));
+                const parentsFromChildMatches = parents.filter(p => parentIdsFromChildMatches.has(p.partNumber));
+                filteredParents = [...new Set([...parentMatches, ...parentsFromChildMatches])];
+            }
+            
+            prodItemsList.innerHTML = '';
+            document.getElementById('prod-no-results').classList.toggle('hidden', filteredParents.length > 0);
+
+            filteredParents.forEach(parent => {
+                const parentIsEditing = parent.id === editingItemId;
+                const parentTr = document.createElement('tr');
+                parentTr.dataset.id = parent.id;
+                const statusClasses = getStatusClasses(parent.status);
+                parentTr.className = `transition-colors duration-300 ${parentIsEditing ? 'bg-white' : statusClasses.split(' ')[0].replace('200', '50')}`;
+                
+                const childItems = children.filter(c => c.parentPartNumber === parent.partNumber);
+                const expanderIcon = childItems.length > 0 ? `<svg class="toggle-expand w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>` : '';
+
+                if (parentIsEditing) {
+                    const options = prodStatuses.map(s => `<option value="${s}" ${s === parent.status ? 'selected' : ''}>${s}</option>`).join('');
+                    parentTr.innerHTML = `<td></td><td><select class="edit-input edit-status">${options}</select></td><td><input class="edit-input edit-partNumber" value="${parent.partNumber}"><input type="hidden" class="edit-parentPartNumber" value=""></td><td><input class="edit-input edit-productionId" value="${parent.productionId}"></td><td><input class="edit-input edit-assemblyId" value="${parent.assemblyId || ''}"></td><td><input type="number" class="edit-input edit-quantity" value="${parent.quantity}"></td><td><input class="edit-input edit-process" value="${parent.process}"></td><td><input type="date" class="edit-input edit-handoverDate" value="${parent.handoverDate}"></td><td><input type="date" class="edit-input edit-completionDate" value="${parent.completionDate}"></td><td><button class="save-item text-green-600">儲存</button><button class="cancel-edit ml-2">取消</button></td>`;
                 } else {
-                    tr.innerHTML = `<td><span class="status-badge ${statusClasses}">${item.status || 'N/A'}</span></td><td>${item.partNumber}</td><td>${item.productionId}</td><td>${item.assemblyId || '-'}</td><td>${item.quantity}</td><td>${item.process}</td><td>${item.handoverDate}</td><td>${item.completionDate}</td><td><button class="edit-item text-indigo-600">編輯</button><button class="delete-item text-red-600 ml-2">刪除</button></td>`;
+                    parentTr.innerHTML = `<td>${expanderIcon}</td><td><span class="status-badge ${statusClasses}">${parent.status || 'N/A'}</span></td><td>${parent.partNumber}</td><td>${parent.productionId}</td><td>${parent.assemblyId || '-'}</td><td>${parent.quantity}</td><td>${parent.process}</td><td>${parent.handoverDate}</td><td>${parent.completionDate}</td><td><button class="edit-item text-indigo-600">編輯</button><button class="delete-item text-red-600 ml-2">刪除</button></td>`;
                 }
-                prodItemsList.appendChild(tr);
+                prodItemsList.appendChild(parentTr);
+
+                childItems.forEach(child => {
+                    const childIsEditing = child.id === editingItemId;
+                    const childTr = document.createElement('tr');
+                    childTr.dataset.id = child.id;
+                    childTr.dataset.parentId = parent.id;
+                    const childStatusClasses = getStatusClasses(child.status);
+                    childTr.className = `hidden transition-colors duration-300 bg-gray-50 ${childIsEditing ? 'bg-white' : ''}`;
+
+                     if (childIsEditing) {
+                        const options = prodStatuses.map(s => `<option value="${s}" ${s === child.status ? 'selected' : ''}>${s}</option>`).join('');
+                        childTr.innerHTML = `<td></td><td><select class="edit-input edit-status">${options}</select></td><td class="pl-8"><input class="edit-input edit-partNumber" value="${child.partNumber}"><input type="hidden" class="edit-parentPartNumber" value="${child.parentPartNumber}"></td><td><input class="edit-input edit-productionId" value="${child.productionId}"></td><td><input class="edit-input edit-assemblyId" value="${child.assemblyId || ''}"></td><td><input type="number" class="edit-input edit-quantity" value="${child.quantity}"></td><td><input class="edit-input edit-process" value="${child.process}"></td><td><input type="date" class="edit-input edit-handoverDate" value="${child.handoverDate}"></td><td><input type="date" class="edit-input edit-completionDate" value="${child.completionDate}"></td><td><button class="save-item text-green-600">儲存</button><button class="cancel-edit ml-2">取消</button></td>`;
+                    } else {
+                        childTr.innerHTML = `<td></td><td><span class="status-badge ${childStatusClasses}">${child.status || 'N/A'}</span></td><td class="pl-8">${child.partNumber}</td><td>${child.productionId}</td><td>${child.assemblyId || '-'}</td><td>${child.quantity}</td><td>${child.process}</td><td>${child.handoverDate}</td><td>${child.completionDate}</td><td><button class="edit-item text-indigo-600">編輯</button><button class="delete-item text-red-600 ml-2">刪除</button></td>`;
+                    }
+                    prodItemsList.appendChild(childTr);
+                });
             });
         };
 
