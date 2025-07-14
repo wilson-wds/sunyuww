@@ -33,6 +33,31 @@
             background-color: #fef9c3; /* yellow-100 */
             transition: background-color 1.5s ease-out;
         }
+        /* 列印專用樣式 */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-content, #printable-content * {
+                visibility: visible;
+            }
+            #printable-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none;
+                box-shadow: none;
+                margin: 0;
+                padding: 2rem;
+            }
+            #detailModal .flex.justify-end { /* 隱藏列印與關閉按鈕 */
+                display: none;
+            }
+            #detail-image {
+                max-width: 80% !important; /* 確保圖片在列印時不會過大 */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -93,6 +118,32 @@
     <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden"><div class="bg-white p-4 rounded-lg max-w-3xl max-h-full overflow-auto"><img id="modalImage" src="" alt="預覽圖片" class="max-w-full max-h-[80vh] rounded"><button id="closeModal" class="absolute top-4 right-4 text-white text-3xl font-bold">&times;</button></div></div>
     <div id="notificationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"><div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4"><p id="notificationMessage" class="text-gray-800 text-base mb-4"></p><button id="closeNotificationModal" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">確定</button></div></div>
     <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"><div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4"><p id="confirmationMessage" class="text-gray-800 text-lg mb-6"></p><div class="flex justify-end space-x-4"><button id="confirmCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">取消</button><button id="confirmOk" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">確定</button></div></div></div>
+    
+    <!-- Detail and Print Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div id="printable-content" class="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full mx-4 relative">
+            <h2 class="text-2xl font-bold mb-6 border-b pb-3">項目明細</h2>
+            <div id="detail-content" class="space-y-4 text-gray-700">
+                <p><strong>生產編號:</strong> <span id="detail-productionId"></span></p>
+                <p><strong>組裝編號:</strong> <span id="detail-assemblyId"></span></p>
+                <p><strong>料號:</strong> <span id="detail-partNumber"></span></p>
+                <p><strong>日期:</strong> <span id="detail-date"></span></p>
+                <div>
+                    <p><strong>修改內容:</strong></p>
+                    <p id="detail-content-text" class="mt-1 p-2 border rounded bg-gray-50 whitespace-pre-wrap"></p>
+                </div>
+                <div id="detail-image-container" class="mt-4 hidden">
+                    <p><strong>圖片預覽:</strong></p>
+                    <img id="detail-image" src="" alt="項目圖片" class="mt-2 max-w-full h-auto rounded border">
+                </div>
+            </div>
+            <div class="mt-8 pt-4 border-t flex justify-end space-x-4">
+                <button id="closeDetailModal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">關閉</button>
+                <button id="printDetail" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">列印</button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -115,6 +166,17 @@
         const confirmationMessage = document.getElementById('confirmationMessage');
         const confirmCancel = document.getElementById('confirmCancel');
         const confirmOk = document.getElementById('confirmOk');
+        // 新增的明細 Modal 元素
+        const detailModal = document.getElementById('detailModal');
+        const closeDetailModal = document.getElementById('closeDetailModal');
+        const printDetail = document.getElementById('printDetail');
+        const detailProductionId = document.getElementById('detail-productionId');
+        const detailAssemblyId = document.getElementById('detail-assemblyId');
+        const detailPartNumber = document.getElementById('detail-partNumber');
+        const detailDate = document.getElementById('detail-date');
+        const detailContentText = document.getElementById('detail-content-text');
+        const detailImageContainer = document.getElementById('detail-image-container');
+        const detailImage = document.getElementById('detail-image');
 
         // --- 狀態變數 ---
         let allTodoItems = [];
@@ -133,6 +195,9 @@
         confirmOk.addEventListener('click', () => { confirmationModal.classList.add('hidden'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
         closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
         imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
+        // 新增的明細 Modal 事件
+        closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
+        printDetail.addEventListener('click', () => window.print());
 
         // --- Firebase 設定 ---
         let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -226,6 +291,11 @@
                         modalImage.src = item.image;
                         imageModal.classList.remove('hidden');
                     }
+                } else if (target.classList.contains('view-detail')) { // 新增的事件處理
+                    const item = allTodoItems.find(i => i.id === id);
+                    if (item) {
+                        populateAndShowDetailModal(item);
+                    }
                 } else if (target.classList.contains('edit-item')) {
                     editingItemId = id;
                     renderTodoItems();
@@ -250,6 +320,26 @@
             });
         }
         
+        // --- 新增：填充並顯示明細 Modal 的函數 ---
+        const populateAndShowDetailModal = (item) => {
+            detailProductionId.textContent = item.productionId || '-';
+            detailAssemblyId.textContent = item.assemblyId || '-';
+            detailPartNumber.textContent = item.partNumber || '-';
+            detailDate.textContent = item.date || '-';
+            detailContentText.textContent = item.content || '-';
+
+            if (item.image) {
+                detailImage.src = item.image;
+                detailImage.alt = `${item.partNumber} 的圖片`;
+                detailImageContainer.classList.remove('hidden');
+            } else {
+                detailImageContainer.classList.add('hidden');
+                detailImage.src = '';
+            }
+
+            detailModal.classList.remove('hidden');
+        };
+
         // --- 渲染函數 ---
         const renderTodoItems = (filter = '') => {
             const lowerFilter = filter.toLowerCase();
@@ -291,7 +381,8 @@
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<button class="view-image text-indigo-600 hover:text-indigo-900">預覽</button>` : '無'}</td>
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
                         <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="edit-item text-indigo-600 hover:text-indigo-900">編輯</button>
+                            <button class="view-detail text-blue-600 hover:text-blue-900">查看</button>
+                            <button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button>
                             <button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button>
                         </td>`;
                 }
