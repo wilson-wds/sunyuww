@@ -33,38 +33,49 @@
             background-color: #fef9c3; /* yellow-100 */
             transition: background-color 1.5s ease-out;
         }
-        /* 列印專用樣式 */
+        
+        /* --- START: 優化後的列印專用樣式 --- */
         @media print {
+            /* 隱藏主內容中除了明細視窗以外的所有元素 */
+            body > *:not(#detailModal) {
+                display: none;
+            }
+            /* 重設 html 和 body 以獲得乾淨的列印背景 */
             html, body {
                 height: auto;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: hidden;
+                background: #fff;
             }
-            body * {
-                visibility: hidden;
-            }
-            #printable-content, #printable-content * {
-                visibility: visible;
-            }
-            #printable-content {
-                position: absolute;
-                left: 0;
-                top: 0;
+            /* 讓明細視窗容器充滿頁面，並移除固定定位 */
+            #detailModal {
+                position: static;
+                display: block !important;
                 width: 100%;
+                height: auto;
+                background: transparent; /* 移除灰色遮罩 */
+                overflow: visible;
+            }
+            /* 讓可列印內容區塊正常流動，移除陰影和邊框 */
+            #printable-content {
+                position: static;
+                width: auto;
+                margin: 0;
+                padding: 0;
                 border: none;
                 box-shadow: none;
-                margin: 0;
-                padding: 1rem;
             }
-            #detailModal .flex.justify-end { /* 隱藏列印與關閉按鈕 */
+            /* 隱藏明細視窗中的按鈕 */
+            #detailModal .flex.justify-end {
                 display: none;
             }
+            /* 避免圖片被跨頁切割 */
             #detail-image {
-                max-width: 80% !important; /* 確保圖片在列印時不會過大 */
                 page-break-inside: avoid;
+                max-width: 100% !important;
             }
         }
+        /* --- END: 優化後的列印專用樣式 --- */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
