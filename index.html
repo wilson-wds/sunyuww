@@ -35,6 +35,12 @@
         }
         /* 列印專用樣式 */
         @media print {
+            html, body {
+                height: auto;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden;
+            }
             body * {
                 visibility: hidden;
             }
@@ -49,13 +55,14 @@
                 border: none;
                 box-shadow: none;
                 margin: 0;
-                padding: 2rem;
+                padding: 1rem;
             }
             #detailModal .flex.justify-end { /* 隱藏列印與關閉按鈕 */
                 display: none;
             }
             #detail-image {
                 max-width: 80% !important; /* 確保圖片在列印時不會過大 */
+                page-break-inside: avoid;
             }
         }
     </style>
