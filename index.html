@@ -69,10 +69,12 @@
             #detailModal .flex.justify-end {
                 display: none;
             }
-            /* 避免圖片被跨頁切割 */
+            /* 避免圖片被跨頁切割，並限制其最大高度 */
             #detail-image {
                 page-break-inside: avoid;
                 max-width: 100% !important;
+                max-height: 65vh; /* 限制圖片最大高度，為文字留下空間 */
+                object-fit: contain; /* 確保圖片在限制內維持長寬比 */
             }
         }
         /* --- END: 優化後的列印專用樣式 --- */
