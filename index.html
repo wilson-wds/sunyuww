@@ -33,6 +33,24 @@
             background-color: #fef9c3; /* yellow-100 */
             transition: background-color 1.5s ease-out;
         }
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            color: #374151;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+        .filter-btn:hover {
+            background-color: #f3f4f6;
+        }
+        .filter-btn.active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
         
         /* --- START: 優化後的列印專用樣式 --- */
         @media print {
@@ -132,7 +150,14 @@
             <div id="list-container" class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg">
                 <div id="todo-list-view">
                     <h2 class="text-2xl font-bold mb-6 border-b pb-3">待修改明細</h2>
-                    <input type="text" id="todo-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full mb-4 px-3 py-2 border rounded-md">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
+                        <input type="text" id="todo-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full sm:w-auto flex-grow px-3 py-2 border rounded-md">
+                        <div class="flex space-x-2 flex-shrink-0">
+                            <button id="filter-all" class="filter-btn active">全部</button>
+                            <button id="filter-pending" class="filter-btn">待處理</button>
+                            <button id="filter-completed" class="filter-btn">已完成</button>
+                        </div>
+                    </div>
                     <div class="table-container">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -212,7 +237,6 @@
         const confirmationMessage = document.getElementById('confirmationMessage');
         const confirmCancel = document.getElementById('confirmCancel');
         const confirmOk = document.getElementById('confirmOk');
-        // 新增的明細 Modal 元素
         const detailModal = document.getElementById('detailModal');
         const closeDetailModal = document.getElementById('closeDetailModal');
         const printDetail = document.getElementById('printDetail');
@@ -223,12 +247,16 @@
         const detailContentText = document.getElementById('detail-content-text');
         const detailImageContainer = document.getElementById('detail-image-container');
         const detailImage = document.getElementById('detail-image');
+        const filterAllBtn = document.getElementById('filter-all');
+        const filterPendingBtn = document.getElementById('filter-pending');
+        const filterCompletedBtn = document.getElementById('filter-completed');
 
         // --- 狀態變數 ---
         let allTodoItems = [];
         let unsubscribeTodo = null;
         let confirmCallback = null;
         let editingItemId = null;
+        let currentFilter = 'all'; // 'all', 'pending', 'completed'
 
         // --- 日期初始化 ---
         document.getElementById('todo-date').valueAsDate = new Date();
@@ -241,9 +269,25 @@
         confirmOk.addEventListener('click', () => { confirmationModal.classList.add('hidden'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
         closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
         imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
-        // 新增的明細 Modal 事件
         closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
         printDetail.addEventListener('click', () => window.print());
+
+        // --- 篩選功能 ---
+        const setFilter = (filter) => {
+            currentFilter = filter;
+            renderTodoItems();
+            updateFilterButtons();
+        };
+
+        const updateFilterButtons = () => {
+            filterAllBtn.classList.toggle('active', currentFilter === 'all');
+            filterPendingBtn.classList.toggle('active', currentFilter === 'pending');
+            filterCompletedBtn.classList.toggle('active', currentFilter === 'completed');
+        };
+
+        filterAllBtn.addEventListener('click', () => setFilter('all'));
+        filterPendingBtn.addEventListener('click', () => setFilter('pending'));
+        filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
 
         // --- Firebase 設定 ---
         let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -282,7 +326,7 @@
                 unsubscribeTodo = onSnapshot(todoCollectionRef, (snapshot) => {
                     allTodoItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     allTodoItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                    renderTodoItems(todoSearchInput.value);
+                    renderTodoItems();
                 });
             };
 
@@ -337,7 +381,7 @@
                         modalImage.src = item.image;
                         imageModal.classList.remove('hidden');
                     }
-                } else if (target.classList.contains('view-detail')) { // 新增的事件處理
+                } else if (target.classList.contains('view-detail')) { 
                     const item = allTodoItems.find(i => i.id === id);
                     if (item) {
                         populateAndShowDetailModal(item);
@@ -366,7 +410,7 @@
             });
         }
         
-        // --- 新增：填充並顯示明細 Modal 的函數 ---
+        // --- 填充並顯示明細 Modal 的函數 ---
         const populateAndShowDetailModal = (item) => {
             detailProductionId.textContent = item.productionId || '-';
             detailAssemblyId.textContent = item.assemblyId || '-';
@@ -387,18 +431,27 @@
         };
 
         // --- 渲染函數 ---
-        const renderTodoItems = (filter = '') => {
-            const lowerFilter = filter.toLowerCase();
-            const list = allTodoItems.filter(item => 
-                item.productionId?.toLowerCase().includes(lowerFilter) || 
-                item.assemblyId?.toLowerCase().includes(lowerFilter) || 
-                item.partNumber?.toLowerCase().includes(lowerFilter)
+        const renderTodoItems = () => {
+            const searchTerm = todoSearchInput.value.toLowerCase();
+            
+            // 1. 根據搜尋詞篩選
+            let filteredList = allTodoItems.filter(item => 
+                item.productionId?.toLowerCase().includes(searchTerm) || 
+                item.assemblyId?.toLowerCase().includes(searchTerm) || 
+                item.partNumber?.toLowerCase().includes(searchTerm)
             );
+
+            // 2. 根據狀態篩選
+            if (currentFilter === 'pending') {
+                filteredList = filteredList.filter(item => !item.completed);
+            } else if (currentFilter === 'completed') {
+                filteredList = filteredList.filter(item => item.completed);
+            }
             
             todoItemsList.innerHTML = '';
-            document.getElementById('todo-no-results').classList.toggle('hidden', list.length > 0);
+            document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
 
-            list.forEach(item => {
+            filteredList.forEach(item => {
                 const isEditing = item.id === editingItemId;
                 const tr = document.createElement('tr');
                 tr.dataset.id = item.id;
@@ -437,7 +490,7 @@
         };
 
         // --- 搜尋 ---
-        todoSearchInput.addEventListener('input', (e) => renderTodoItems(e.target.value.toLowerCase()));
+        todoSearchInput.addEventListener('input', () => renderTodoItems());
 
     </script>
 </body>
