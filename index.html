@@ -302,6 +302,10 @@
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
+            
+            // --- 資料庫路徑設定 (關鍵) ---
+            // 下方這行程式碼定義了 Firestore 中共享資料集合的路徑。
+            // 因為這個路徑對於此應用的所有使用者來說都是相同的，所以每個人都會看到並操作相同的資料。
             const todoCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
 
             onAuthStateChanged(auth, async (user) => {
