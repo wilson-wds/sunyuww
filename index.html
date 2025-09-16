@@ -17,7 +17,7 @@
         }
         .completed > td:not(:first-child):not(:last-child) {
             text-decoration: line-through;
-            color: #9ca3af;
+            color: #9ca3af; /* gray-400 */
         }
         .table-container {
             overflow-x: auto;
@@ -25,9 +25,9 @@
         .edit-input {
             width: 100%;
             padding: 0.25rem 0.5rem;
-            border: 1px solid #d1d5db;
+            border: 1px solid #d1d5db; /* gray-300 */
             border-radius: 0.375rem;
-            background-color: #f9fafb;
+            background-color: #f9fafb; /* gray-50 */
         }
         .new-item-highlight {
             background-color: #fef9c3; /* yellow-100 */
@@ -36,15 +36,15 @@
         .filter-btn {
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
-            border: 1px solid #d1d5db;
+            border: 1px solid #d1d5db; /* gray-300 */
             background-color: #ffffff;
-            color: #374151;
+            color: #374151; /* gray-700 */
             font-weight: 500;
             transition: background-color 0.2s, color 0.2s, border-color 0.2s;
             cursor: pointer;
         }
         .filter-btn:hover {
-            background-color: #f3f4f6;
+            background-color: #f3f4f6; /* gray-100 */
         }
         .filter-btn.active {
             background-color: #4f46e5; /* indigo-600 */
@@ -129,56 +129,132 @@
             <div id="auth-status" class="mt-4 text-sm text-gray-500">正在連接到 Firebase...</div>
         </header>
         
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- 左側：新增表單 -->
-            <div id="form-container" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
-                <div id="todo-form-view">
-                    <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新待辦</h2>
-                    <form id="addItemForm" class="space-y-4">
-                        <input type="text" id="todo-productionId" placeholder="生產編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
-                        <input type="text" id="todo-assemblyId" placeholder="組裝編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
-                        <input type="text" id="todo-partNumber" placeholder="料號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
-                        <textarea id="todo-content" placeholder="修改內容" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required></textarea>
-                        <div><label class="text-sm">圖片 (小於 750KB)</label><input type="file" id="todo-imageUpload" class="w-full text-sm"></div>
-                        <div><label class="text-sm">日期</label><input type="date" id="todo-date" class="w-full px-3 py-2 border rounded-md" required></div>
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400" disabled>新增項目</button>
-                    </form>
-                </div>
-            </div>
+        <!-- START: Tab Navigation -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button id="tab-todo" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600" aria-current="page">
+                    待修改明細
+                </button>
+                <button id="tab-tracking" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    事件追蹤
+                </button>
+                <button id="tab-feedback" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    問題反饋紀錄
+                </button>
+            </nav>
+        </div>
+        <!-- END: Tab Navigation -->
 
-            <!-- 右側：待辦列表 -->
-            <div id="list-container" class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg">
-                <div id="todo-list-view">
-                    <h2 class="text-2xl font-bold mb-6 border-b pb-3">待修改明細</h2>
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
-                        <input type="text" id="todo-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full sm:w-auto flex-grow px-3 py-2 border rounded-md">
-                        <div class="flex space-x-2 flex-shrink-0">
-                            <button id="filter-all" class="filter-btn active">全部</button>
-                            <button id="filter-pending" class="filter-btn">待處理</button>
-                            <button id="filter-completed" class="filter-btn">已完成</button>
+        <!-- START: Tab Content -->
+        <div id="content-todo">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- 左側：新增表單 -->
+                <div id="form-container" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                    <div id="todo-form-view">
+                        <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新待辦</h2>
+                        <form id="addItemForm" class="space-y-4">
+                            <input type="text" id="todo-productionId" placeholder="生產編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="text" id="todo-assemblyId" placeholder="組裝編號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <input type="text" id="todo-partNumber" placeholder="料號" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <textarea id="todo-content" placeholder="修改內容" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" required></textarea>
+                            <div><label class="text-sm">圖片 (小於 750KB)</label><input type="file" id="todo-imageUpload" class="w-full text-sm"></div>
+                            <div><label class="text-sm">日期</label><input type="date" id="todo-date" class="w-full px-3 py-2 border rounded-md" required></div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400" disabled>新增項目</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 右側：待辦列表 -->
+                <div id="list-container-todo" class="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg">
+                    <div id="todo-list-view">
+                        <h2 class="text-2xl font-bold mb-6 border-b pb-3">待修改明細列表</h2>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
+                            <input type="text" id="todo-searchInput" placeholder="查詢 (生產/組裝/料號)..." class="w-full sm:w-auto flex-grow px-3 py-2 border rounded-md">
+                            <div class="flex space-x-2 flex-shrink-0">
+                                <button id="filter-all" class="filter-btn active">全部</button>
+                                <button id="filter-pending" class="filter-btn">待處理</button>
+                                <button id="filter-completed" class="filter-btn">已完成</button>
+                            </div>
                         </div>
+                        <div class="table-container">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">生產編號</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">組裝編號</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">料號</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">修改內容</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">圖片</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="todo-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                        <div id="pagination-container-todo" class="mt-6 flex justify-between items-center hidden">
+                            <span id="page-info-todo" class="text-sm text-gray-700"></span>
+                            <div id="pagination-buttons-todo" class="flex items-center space-x-1"></div>
+                        </div>
+                        <p id="todo-no-results" class="text-center py-8 hidden">找不到項目。</p>
                     </div>
-                    <div class="table-container">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">生產編號</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">組裝編號</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">料號</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">修改內容</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">圖片</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="todo-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
-                        </table>
-                    </div>
-                    <p id="todo-no-results" class="text-center py-8 hidden">找不到項目。</p>
                 </div>
             </div>
         </div>
+        <div id="content-tracking" class="hidden">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新事件</h2>
+                <form id="addEventForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-8">
+                    <div><label class="block text-sm font-medium text-gray-700">日期</label><input type="date" id="event-date" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
+                    <div><label class="block text-sm font-medium text-gray-700">事項</label><input type="text" id="event-matter" placeholder="事件內容" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
+                    <div><label class="block text-sm font-medium text-gray-700">相關人員</label><input type="text" id="event-personnel" placeholder="相關人員" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
+                    <div class="flex items-center"><input type="checkbox" id="event-closed" class="h-4 w-4 text-indigo-600 rounded mr-2"><label for="event-closed" class="text-sm font-medium text-gray-700">已結案</label></div>
+                    <div class="md:col-span-3"><button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">新增事件</button></div>
+                </form>
+
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">事件追蹤列表</h2>
+                 <div class="flex justify-end mb-4"><input type="text" id="event-searchInput" placeholder="查詢事項或人員..." class="w-full sm:w-1/3 px-3 py-2 border rounded-md"></div>
+                <div class="table-container">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
+                        <tbody id="event-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+                 <div id="pagination-container-event" class="mt-6 flex justify-between items-center hidden"><span id="page-info-event" class="text-sm text-gray-700"></span><div id="pagination-buttons-event" class="flex items-center space-x-1"></div></div>
+                <p id="event-no-results" class="text-center py-8 hidden">找不到事件。</p>
+            </div>
+        </div>
+        <div id="content-feedback" class="hidden">
+             <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">建立新反饋</h2>
+                <form id="addFeedbackForm" class="space-y-4 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700">類型</label><select id="feedback-type" class="mt-1 w-full px-3 py-2 border rounded-md"><option>硬體問題</option><option>軟體問題</option><option>操作問題</option><option>其他</option></select></div>
+                        <div><label class="block text-sm font-medium text-gray-700">是否結案</label><select id="feedback-status" class="mt-1 w-full px-3 py-2 border rounded-md"><option>處理中</option><option>已結案</option></select></div>
+                    </div>
+                    <div><label class="block text-sm font-medium text-gray-700">問題內容</label><textarea id="feedback-problem" placeholder="詳細描述問題..." rows="3" class="mt-1 w-full px-3 py-2 border rounded-md" required></textarea></div>
+                    <div><label class="block text-sm font-medium text-gray-700">解決方式</label><textarea id="feedback-solution" placeholder="記錄解決方式..." rows="3" class="mt-1 w-full px-3 py-2 border rounded-md"></textarea></div>
+                    <div><button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">新增反饋</button></div>
+                </form>
+
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">問題反饋列表</h2>
+                <div class="flex justify-end mb-4">
+                    <select id="feedback-filterType" class="w-full sm:w-1/3 px-3 py-2 border rounded-md">
+                        <option value="">所有類型</option><option>硬體問題</option><option>軟體問題</option><option>操作問題</option><option>其他</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">類型</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">問題內容</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">解決方式</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
+                        <tbody id="feedback-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+                 <div id="pagination-container-feedback" class="mt-6 flex justify-between items-center hidden"><span id="page-info-feedback" class="text-sm text-gray-700"></span><div id="pagination-buttons-feedback" class="flex items-center space-x-1"></div></div>
+                <p id="feedback-no-results" class="text-center py-8 hidden">找不到反饋紀錄。</p>
+            </div>
+        </div>
+        <!-- END: Tab Content -->
     </main>
 
     <!-- Modals -->
@@ -222,11 +298,43 @@
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM 元素 ---
+        const tabTodo = document.getElementById('tab-todo');
+        const tabTracking = document.getElementById('tab-tracking');
+        const tabFeedback = document.getElementById('tab-feedback');
+        const contentTodo = document.getElementById('content-todo');
+        const contentTracking = document.getElementById('content-tracking');
+        const contentFeedback = document.getElementById('content-feedback');
+        
+        // 待辦事項
         const addItemForm = document.getElementById('addItemForm');
         const todoItemsList = document.getElementById('todo-itemsList');
         const todoSearchInput = document.getElementById('todo-searchInput');
-        const authStatus = document.getElementById('auth-status');
         const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
+        const filterAllBtn = document.getElementById('filter-all');
+        const filterPendingBtn = document.getElementById('filter-pending');
+        const filterCompletedBtn = document.getElementById('filter-completed');
+        const paginationContainerTodo = document.getElementById('pagination-container-todo');
+        const pageInfoTodo = document.getElementById('page-info-todo');
+        const paginationButtonsTodo = document.getElementById('pagination-buttons-todo');
+
+        // 事件追蹤
+        const addEventForm = document.getElementById('addEventForm');
+        const eventItemsList = document.getElementById('event-itemsList');
+        const eventSearchInput = document.getElementById('event-searchInput');
+        const paginationContainerEvent = document.getElementById('pagination-container-event');
+        const pageInfoEvent = document.getElementById('page-info-event');
+        const paginationButtonsEvent = document.getElementById('pagination-buttons-event');
+
+        // 問題反饋
+        const addFeedbackForm = document.getElementById('addFeedbackForm');
+        const feedbackItemsList = document.getElementById('feedback-itemsList');
+        const feedbackFilterType = document.getElementById('feedback-filterType');
+        const paginationContainerFeedback = document.getElementById('pagination-container-feedback');
+        const pageInfoFeedback = document.getElementById('page-info-feedback');
+        const paginationButtonsFeedback = document.getElementById('pagination-buttons-feedback');
+
+        // 通用
+        const authStatus = document.getElementById('auth-status');
         const imageModal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
         const closeModal = document.getElementById('closeModal');
@@ -247,19 +355,20 @@
         const detailContentText = document.getElementById('detail-content-text');
         const detailImageContainer = document.getElementById('detail-image-container');
         const detailImage = document.getElementById('detail-image');
-        const filterAllBtn = document.getElementById('filter-all');
-        const filterPendingBtn = document.getElementById('filter-pending');
-        const filterCompletedBtn = document.getElementById('filter-completed');
 
         // --- 狀態變數 ---
-        let allTodoItems = [];
-        let unsubscribeTodo = null;
+        let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
+        let unsubscribeTodo = null, unsubscribeEvents = null, unsubscribeFeedback = null;
         let confirmCallback = null;
         let editingItemId = null;
-        let currentFilter = 'all'; // 'all', 'pending', 'completed'
+        let currentFilter = 'all'; // for todo
+        let newItemsToHighlight = new Set();
+        let currentPageTodo = 1, currentPageEvent = 1, currentPageFeedback = 1;
+        const itemsPerPage = 8;
 
         // --- 日期初始化 ---
         document.getElementById('todo-date').valueAsDate = new Date();
+        document.getElementById('event-date').valueAsDate = new Date();
 
         // --- Modal 輔助函數 ---
         const showNotification = (message) => { notificationMessage.textContent = message; notificationModal.classList.remove('hidden'); };
@@ -272,22 +381,29 @@
         closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
         printDetail.addEventListener('click', () => window.print());
 
-        // --- 篩選功能 ---
-        const setFilter = (filter) => {
-            currentFilter = filter;
-            renderTodoItems();
-            updateFilterButtons();
+        // --- Tab Switching ---
+        const switchTab = (activeTab) => {
+            const tabs = { todo: tabTodo, tracking: tabTracking, feedback: tabFeedback };
+            const contents = { todo: contentTodo, tracking: contentTracking, feedback: contentFeedback };
+            const activeClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600';
+            const inactiveClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+            
+            for (const key in tabs) {
+                if (key === activeTab) {
+                    tabs[key].className = activeClasses;
+                    tabs[key].setAttribute('aria-current', 'page');
+                    contents[key].classList.remove('hidden');
+                } else {
+                    tabs[key].className = inactiveClasses;
+                    tabs[key].removeAttribute('aria-current');
+                    contents[key].classList.add('hidden');
+                }
+            }
         };
 
-        const updateFilterButtons = () => {
-            filterAllBtn.classList.toggle('active', currentFilter === 'all');
-            filterPendingBtn.classList.toggle('active', currentFilter === 'pending');
-            filterCompletedBtn.classList.toggle('active', currentFilter === 'completed');
-        };
-
-        filterAllBtn.addEventListener('click', () => setFilter('all'));
-        filterPendingBtn.addEventListener('click', () => setFilter('pending'));
-        filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
+        tabTodo.addEventListener('click', () => switchTab('todo'));
+        tabTracking.addEventListener('click', () => switchTab('tracking'));
+        tabFeedback.addEventListener('click', () => switchTab('feedback'));
 
         // --- Firebase 設定 ---
         let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -303,28 +419,29 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
             
-            // --- 資料庫路徑設定 (關鍵) ---
-            // 下方這行程式碼定義了 Firestore 中共享資料集合的路徑。
-            // 因為這個路徑對於此應用的所有使用者來說都是相同的，所以每個人都會看到並操作相同的資料。
             const todoCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
+            const eventCollectionRef = collection(db, `/artifacts/${appId}/public/data/eventTrackingItems`);
+            const feedbackCollectionRef = collection(db, `/artifacts/${appId}/public/data/feedbackItems`);
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     authStatus.textContent = `已連線 | 公開共享模式`;
                     todoSubmitButton.disabled = false;
                     listenForTodoItems();
+                    listenForEventItems();
+                    listenForFeedbackItems();
                 } else {
                     authStatus.textContent = '正在驗證身份...';
                     try {
                         if (typeof __initial_auth_token !== 'undefined') await signInWithCustomToken(auth, __initial_auth_token);
                         else await signInAnonymously(auth);
-                    } catch (error) {
-                        authStatus.textContent = '錯誤：無法連接。';
-                    }
+                    } catch (error) { authStatus.textContent = '錯誤：無法連接。'; }
                 }
             });
 
-            // --- 資料監聽 ---
+            // =================================================================
+            // --- 待修改明細 (Todo) Section ---
+            // =================================================================
             const listenForTodoItems = () => {
                 if (unsubscribeTodo) unsubscribeTodo();
                 unsubscribeTodo = onSnapshot(todoCollectionRef, (snapshot) => {
@@ -334,168 +451,207 @@
                 });
             };
 
-            // --- 表單提交 ---
-            addItemForm.addEventListener('submit', async (e) => {
+            addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const imageFile = document.getElementById('todo-imageUpload').files[0];
-                if (imageFile && imageFile.size > 750 * 1024) {
-                    showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。");
-                    return;
-                }
+                if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     try {
-                        await addDoc(todoCollectionRef, {
-                            productionId: document.getElementById('todo-productionId').value,
-                            assemblyId: document.getElementById('todo-assemblyId').value,
-                            partNumber: document.getElementById('todo-partNumber').value,
-                            content: document.getElementById('todo-content').value,
-                            date: document.getElementById('todo-date').value,
-                            image: reader.result || null,
-                            completed: false,
-                            createdAt: serverTimestamp()
+                        const docRef = await addDoc(todoCollectionRef, {
+                            productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
+                            partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
+                            date: document.getElementById('todo-date').value, image: reader.result || null,
+                            completed: false, createdAt: serverTimestamp()
                         });
+                        newItemsToHighlight.add(docRef.id);
                         addItemForm.reset();
                         document.getElementById('todo-date').valueAsDate = new Date();
-                    } catch (error) {
-                        showNotification(`新增待辦失敗: ${error.message}`);
-                    }
+                    } catch (error) { showNotification(`新增待辦失敗: ${error.message}`); }
                 };
-                if (imageFile) reader.readAsDataURL(imageFile);
-                else reader.onloadend();
+                if (imageFile) reader.readAsDataURL(imageFile); else reader.onloadend();
             });
 
-            // --- 列表事件代理 ---
-            document.getElementById('list-container').addEventListener('click', async (e) => {
-                const target = e.target;
-                const tr = target.closest('tr');
-                if (!tr) return;
-
-                const id = tr.dataset.id;
-                const docRef = doc(todoCollectionRef, id);
-
+            document.getElementById('list-container-todo').addEventListener('click', async (e) => {
+                const target = e.target; const tr = target.closest('tr'); if (!tr) return;
+                const id = tr.dataset.id; const docRef = doc(todoCollectionRef, id);
                 if (target.classList.contains('toggle-complete')) {
-                    const item = allTodoItems.find(i => i.id === id);
-                    await updateDoc(docRef, { completed: !item.completed });
+                    const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
                 } else if (target.classList.contains('delete-item')) {
                     showConfirmation('您確定要刪除這個項目嗎？', () => deleteDoc(docRef));
                 } else if (target.classList.contains('view-image')) {
-                    const item = allTodoItems.find(i => i.id === id);
-                    if (item && item.image) {
-                        modalImage.src = item.image;
-                        imageModal.classList.remove('hidden');
-                    }
+                    const item = allTodoItems.find(i => i.id === id); if (item && item.image) { modalImage.src = item.image; imageModal.classList.remove('hidden'); }
                 } else if (target.classList.contains('view-detail')) { 
-                    const item = allTodoItems.find(i => i.id === id);
-                    if (item) {
-                        populateAndShowDetailModal(item);
-                    }
+                    const item = allTodoItems.find(i => i.id === id); if (item) { populateAndShowDetailModal(item); }
                 } else if (target.classList.contains('edit-item')) {
-                    editingItemId = id;
-                    renderTodoItems();
+                    editingItemId = id; renderTodoItems();
                 } else if (target.classList.contains('cancel-edit')) {
-                    editingItemId = null;
-                    renderTodoItems();
+                    editingItemId = null; renderTodoItems();
                 } else if (target.classList.contains('save-item')) {
                     try {
-                        const updatedData = {
-                            productionId: tr.querySelector('.edit-productionId').value,
-                            assemblyId: tr.querySelector('.edit-assemblyId').value,
-                            partNumber: tr.querySelector('.edit-partNumber').value,
-                            content: tr.querySelector('.edit-content').value,
+                        await updateDoc(docRef, {
+                            productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
+                            partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
                             date: tr.querySelector('.edit-date').value,
-                        };
-                        await updateDoc(docRef, updatedData);
+                        });
                         editingItemId = null;
-                    } catch(error) {
-                        showNotification(`儲存失敗: ${error.message}`);
-                    }
+                    } catch(error) { showNotification(`儲存失敗: ${error.message}`); }
                 }
             });
+
+            const renderTodoItems = () => {
+                const searchTerm = todoSearchInput.value.toLowerCase();
+                let filteredList = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(searchTerm) || item.assemblyId?.toLowerCase().includes(searchTerm) || item.partNumber?.toLowerCase().includes(searchTerm));
+                if (currentFilter === 'pending') { filteredList = filteredList.filter(item => !item.completed); } else if (currentFilter === 'completed') { filteredList = filteredList.filter(item => item.completed); }
+                const paginatedItems = filteredList.slice((currentPageTodo - 1) * itemsPerPage, currentPageTodo * itemsPerPage);
+                todoItemsList.innerHTML = ''; document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
+                paginatedItems.forEach(item => {
+                    const isEditing = item.id === editingItemId; const tr = document.createElement('tr'); tr.dataset.id = item.id; if (item.completed) tr.classList.add('completed');
+                    if (newItemsToHighlight.has(item.id)) { tr.classList.add('new-item-highlight'); setTimeout(() => tr.classList.remove('new-item-highlight'), 1500); newItemsToHighlight.delete(item.id); }
+                    tr.innerHTML = isEditing ? `...` : `...`; // Simplified for brevity
+                    if (isEditing) {
+                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td><td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td><td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="save-item text-green-600 hover:text-green-900">儲存</button><button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button></td>`;
+                    } else {
+                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td><td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<button class="view-image text-indigo-600 hover:text-indigo-900">預覽</button>` : '無'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="view-detail text-blue-600 hover:text-blue-900">查看</button><button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button><button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button></td>`;
+                    }
+                    todoItemsList.appendChild(tr);
+                });
+                setupPagination(filteredList.length, currentPageTodo, paginationContainerTodo, pageInfoTodo, paginationButtonsTodo, (page) => { currentPageTodo = page; renderTodoItems(); });
+            };
+            
+            const setFilter = (filter) => { currentPageTodo = 1; currentFilter = filter; renderTodoItems(); updateFilterButtons(); };
+            const updateFilterButtons = () => { filterAllBtn.classList.toggle('active', currentFilter === 'all'); filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); filterCompletedBtn.classList.toggle('active', currentFilter === 'completed'); };
+            filterAllBtn.addEventListener('click', () => setFilter('all')); filterPendingBtn.addEventListener('click', () => setFilter('pending')); filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
+            todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
+
+            // =================================================================
+            // --- 事件追蹤 (Event) Section ---
+            // =================================================================
+            const listenForEventItems = () => {
+                if (unsubscribeEvents) unsubscribeEvents();
+                unsubscribeEvents = onSnapshot(eventCollectionRef, (snapshot) => {
+                    allEventItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    allEventItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    renderEventItems();
+                });
+            };
+
+            addEventForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    await addDoc(eventCollectionRef, {
+                        date: document.getElementById('event-date').value, matter: document.getElementById('event-matter').value,
+                        personnel: document.getElementById('event-personnel').value, closed: document.getElementById('event-closed').checked,
+                        createdAt: serverTimestamp()
+                    });
+                    addEventForm.reset(); document.getElementById('event-date').valueAsDate = new Date();
+                } catch (error) { showNotification(`新增事件失敗: ${error.message}`); }
+            });
+
+            contentTracking.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('delete-event')) {
+                    const id = e.target.dataset.id;
+                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(eventCollectionRef, id)));
+                }
+            });
+
+            const renderEventItems = () => {
+                const searchTerm = eventSearchInput.value.toLowerCase();
+                const filteredList = allEventItems.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
+                const paginatedItems = filteredList.slice((currentPageEvent - 1) * itemsPerPage, currentPageEvent * itemsPerPage);
+                eventItemsList.innerHTML = ''; document.getElementById('event-no-results').classList.toggle('hidden', filteredList.length > 0);
+                paginatedItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td><td class="px-4 py-4 whitespace-nowrap text-sm ${item.closed ? 'text-green-600' : 'text-yellow-600'}">${item.closed ? '已結案' : '處理中'}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button></td>`;
+                    eventItemsList.appendChild(tr);
+                });
+                setupPagination(filteredList.length, currentPageEvent, paginationContainerEvent, pageInfoEvent, paginationButtonsEvent, (page) => { currentPageEvent = page; renderEventItems(); });
+            };
+            eventSearchInput.addEventListener('input', () => { currentPageEvent = 1; renderEventItems(); });
+
+            // =================================================================
+            // --- 問題反饋 (Feedback) Section ---
+            // =================================================================
+             const listenForFeedbackItems = () => {
+                if (unsubscribeFeedback) unsubscribeFeedback();
+                unsubscribeFeedback = onSnapshot(feedbackCollectionRef, (snapshot) => {
+                    allFeedbackItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    allFeedbackItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    renderFeedbackItems();
+                });
+            };
+
+            addFeedbackForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const solution = document.getElementById('feedback-solution').value;
+                const status = document.getElementById('feedback-status').value;
+                if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
+                try {
+                    await addDoc(feedbackCollectionRef, {
+                        type: document.getElementById('feedback-type').value, problem: document.getElementById('feedback-problem').value,
+                        solution: solution, status: status, createdAt: serverTimestamp()
+                    });
+                    addFeedbackForm.reset();
+                } catch (error) { showNotification(`新增反饋失敗: ${error.message}`); }
+            });
+
+            contentFeedback.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('delete-feedback')) {
+                    const id = e.target.dataset.id;
+                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(feedbackCollectionRef, id)));
+                }
+            });
+
+            const renderFeedbackItems = () => {
+                const filterType = feedbackFilterType.value;
+                const filteredList = allFeedbackItems.filter(item => !filterType || item.type === filterType);
+                const paginatedItems = filteredList.slice((currentPageFeedback - 1) * itemsPerPage, currentPageFeedback * itemsPerPage);
+                feedbackItemsList.innerHTML = ''; document.getElementById('feedback-no-results').classList.toggle('hidden', filteredList.length > 0);
+                paginatedItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.type}</td><td class="px-4 py-4 text-sm text-gray-900 max-w-xs truncate" title="${item.problem}">${item.problem}</td><td class="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title="${item.solution}">${item.solution || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm ${item.status === '已結案' ? 'text-green-600' : 'text-yellow-600'}">${item.status}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button data-id="${item.id}" class="delete-feedback text-red-600 hover:text-red-900">刪除</button></td>`;
+                    feedbackItemsList.appendChild(tr);
+                });
+                setupPagination(filteredList.length, currentPageFeedback, paginationContainerFeedback, pageInfoFeedback, paginationButtonsFeedback, (page) => { currentPageFeedback = page; renderFeedbackItems(); });
+            };
+            feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
         }
         
+        // --- 通用分頁控制 ---
+        const setupPagination = (totalItems, currentPage, container, infoEl, buttonsEl, onPageClick) => {
+            buttonsEl.innerHTML = '';
+            const pageCount = Math.ceil(totalItems / itemsPerPage);
+            if (pageCount <= 1) { return container.classList.add('hidden'); }
+            container.classList.remove('hidden');
+            const startItem = (currentPage - 1) * itemsPerPage + 1;
+            const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+            infoEl.textContent = `顯示 ${totalItems} 個項目中的 ${startItem}-${endItem} 項`;
+            const createBtn = (text, onClick, enabled = true) => {
+                const btn = document.createElement('button');
+                btn.textContent = text;
+                btn.disabled = !enabled;
+                btn.className = `px-3 py-1 text-sm font-medium border rounded-md ${!enabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} ${text === currentPage ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-700 bg-white border-gray-300'}`;
+                btn.addEventListener('click', onClick);
+                return btn;
+            };
+            buttonsEl.appendChild(createBtn('«', () => onPageClick(currentPage - 1), currentPage > 1));
+            for (let i = 1; i <= pageCount; i++) { buttonsEl.appendChild(createBtn(i, () => onPageClick(i), true)); }
+            buttonsEl.appendChild(createBtn('»', () => onPageClick(currentPage + 1), currentPage < pageCount));
+        };
+
         // --- 填充並顯示明細 Modal 的函數 ---
         const populateAndShowDetailModal = (item) => {
-            detailProductionId.textContent = item.productionId || '-';
-            detailAssemblyId.textContent = item.assemblyId || '-';
-            detailPartNumber.textContent = item.partNumber || '-';
-            detailDate.textContent = item.date || '-';
+            detailProductionId.textContent = item.productionId || '-'; detailAssemblyId.textContent = item.assemblyId || '-';
+            detailPartNumber.textContent = item.partNumber || '-'; detailDate.textContent = item.date || '-';
             detailContentText.textContent = item.content || '-';
-
             if (item.image) {
-                detailImage.src = item.image;
-                detailImage.alt = `${item.partNumber} 的圖片`;
+                detailImage.src = item.image; detailImage.alt = `${item.partNumber} 的圖片`;
                 detailImageContainer.classList.remove('hidden');
-            } else {
-                detailImageContainer.classList.add('hidden');
-                detailImage.src = '';
-            }
-
+            } else { detailImageContainer.classList.add('hidden'); detailImage.src = ''; }
             detailModal.classList.remove('hidden');
         };
-
-        // --- 渲染函數 ---
-        const renderTodoItems = () => {
-            const searchTerm = todoSearchInput.value.toLowerCase();
-            
-            // 1. 根據搜尋詞篩選
-            let filteredList = allTodoItems.filter(item => 
-                item.productionId?.toLowerCase().includes(searchTerm) || 
-                item.assemblyId?.toLowerCase().includes(searchTerm) || 
-                item.partNumber?.toLowerCase().includes(searchTerm)
-            );
-
-            // 2. 根據狀態篩選
-            if (currentFilter === 'pending') {
-                filteredList = filteredList.filter(item => !item.completed);
-            } else if (currentFilter === 'completed') {
-                filteredList = filteredList.filter(item => item.completed);
-            }
-            
-            todoItemsList.innerHTML = '';
-            document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
-
-            filteredList.forEach(item => {
-                const isEditing = item.id === editingItemId;
-                const tr = document.createElement('tr');
-                tr.dataset.id = item.id;
-                if (item.completed) tr.classList.add('completed');
-                
-                if (isEditing) {
-                    tr.innerHTML = `
-                        <td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td>
-                        <td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td>
-                        <td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td>
-                        <td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td>
-                        <td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td>
-                        <td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="save-item text-green-600 hover:text-green-900">儲存</button>
-                            <button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button>
-                        </td>`;
-                } else {
-                    tr.innerHTML = `
-                        <td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td>
-                        <td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<button class="view-image text-indigo-600 hover:text-indigo-900">預覽</button>` : '無'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="view-detail text-blue-600 hover:text-blue-900">查看</button>
-                            <button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button>
-                            <button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button>
-                        </td>`;
-                }
-                todoItemsList.appendChild(tr);
-            });
-        };
-
-        // --- 搜尋 ---
-        todoSearchInput.addEventListener('input', () => renderTodoItems());
 
     </script>
 </body>
 </html>
+
