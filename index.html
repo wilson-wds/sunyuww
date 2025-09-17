@@ -82,45 +82,44 @@
             body:not(.is-printing-list) #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
 
             /* --- PRINTING THE EVENT LIST --- */
-            /* When printing the list, hide the other main content tabs */
             body.is-printing-list #content-todo,
             body.is-printing-list #content-feedback {
                 display: none !important;
             }
 
-            /* Ensure the main container and tracking content are visible and take up the page */
             body.is-printing-list main,
             body.is-printing-list #content-tracking {
                 display: block !important;
             }
 
-            /* Reset container styles for a clean print page */
             body.is-printing-list #content-tracking .bg-white {
                 box-shadow: none;
                 border: none;
                 padding: 0;
             }
             
-            /* Style the table for a professional print look */
+            body.is-printing-list #event-print-header {
+                display: block !important;
+            }
+
             body.is-printing-list table {
                 width: 100%;
                 border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 1px solid #e5e7eb; /* light gray border */
+                border: 1px solid #e5e7eb;
                 padding: 8px;
                 font-size: 10pt;
                 text-align: left;
             }
             body.is-printing-list thead {
-                background-color: #f9fafb; /* very light gray background for header */
-                display: table-header-group; /* Important: repeats the header on each printed page */
+                background-color: #f9fafb;
+                display: table-header-group;
             }
 
-            /* Hide interactive elements that don't make sense on paper */
             body.is-printing-list .toggle-event-closed,
-            body.is-printing-list td:last-child, /* Hides the "actions" column content */
-            body.is-printing-list th:last-child { /* Hides the "actions" column header */
+            body.is-printing-list td:last-child,
+            body.is-printing-list th:last-child {
                 display: none;
             }
         }
@@ -227,6 +226,13 @@
                             <input type="text" id="event-searchInput" placeholder="查詢事項或人員..." class="w-full sm:w-auto px-3 py-2 border rounded-md">
                             <button id="printEventListBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex-shrink-0">列印列表</button>
                         </div>
+                    </div>
+                </div>
+                <!-- Print Header -->
+                <div id="event-print-header" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h1 class="text-2xl font-bold">廠務工作列表</h1>
+                        <p id="event-print-date" class="text-sm"></p>
                     </div>
                 </div>
                 <div class="table-container">
@@ -397,10 +403,11 @@
 
         // --- 狀態變數 ---
         let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
-        let unsubscribeAllData = null; // Changed from three separate unsubscribes
+        let unsubscribeAllData = null;
         let confirmCallback = null;
         let editingItemId = null;
-        let currentFilter = 'all'; // for todo
+        let editingEventId = null;
+        let currentFilter = 'all';
         let newItemsToHighlight = new Set();
         let currentPageTodo = 1, currentPageEvent = 1, currentPageFeedback = 1;
         const itemsPerPage = 8;
@@ -431,7 +438,6 @@
         // --- Global Print Handlers ---
         window.addEventListener('afterprint', () => {
             document.body.classList.remove('is-printing-list');
-            // Re-render the event list to restore pagination and interactive elements
             renderEventItems();
         });
 
@@ -474,16 +480,13 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
             
-            // --- Consolidated Collection Reference ---
-            // All data types will be stored in this single collection with a 'type' field to differentiate them.
-            // This is to work around potential security rule restrictions on creating new collections.
             const appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     authStatus.textContent = `已連線 | 公開共享模式`;
                     todoSubmitButton.disabled = false;
-                    listenForAllData(); // Single listener for all data types
+                    listenForAllData();
                 } else {
                     authStatus.textContent = '正在驗證身份...';
                     try {
@@ -499,7 +502,6 @@
             const listenForAllData = () => {
                 if (unsubscribeAllData) unsubscribeAllData();
                 unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
-                    // Reset local arrays
                     allTodoItems = [];
                     allEventItems = [];
                     allFeedbackItems = [];
@@ -514,18 +516,16 @@
                                 allFeedbackItems.push(data);
                                 break;
                             case 'todo':
-                            default: // For backward compatibility with old data without a 'type' field
+                            default:
                                 allTodoItems.push(data);
                                 break;
                         }
                     });
 
-                    // Sort each array by creation date
                     allTodoItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
                     allEventItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
                     allFeedbackItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
                     
-                    // Render all lists
                     renderTodoItems();
                     renderEventItems();
                     renderFeedbackItems();
@@ -544,7 +544,7 @@
                 reader.onloadend = async () => {
                     try {
                         const docRef = await addDoc(appDataCollectionRef, {
-                            type: 'todo', // Add type field
+                            type: 'todo',
                             productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
                             partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
                             date: document.getElementById('todo-date').value, image: reader.result || null,
@@ -560,7 +560,7 @@
 
             document.getElementById('list-container-todo').addEventListener('click', async (e) => {
                 const target = e.target; const tr = target.closest('tr'); if (!tr) return;
-                const id = tr.dataset.id; const docRef = doc(appDataCollectionRef, id); // Use single collection ref
+                const id = tr.dataset.id; const docRef = doc(appDataCollectionRef, id);
                 if (target.classList.contains('toggle-complete')) {
                     const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
                 } else if (target.classList.contains('delete-item')) {
@@ -594,7 +594,6 @@
                 paginatedItems.forEach(item => {
                     const isEditing = item.id === editingItemId; const tr = document.createElement('tr'); tr.dataset.id = item.id; if (item.completed) tr.classList.add('completed');
                     if (newItemsToHighlight.has(item.id)) { tr.classList.add('new-item-highlight'); setTimeout(() => tr.classList.remove('new-item-highlight'), 1500); newItemsToHighlight.delete(item.id); }
-                    tr.innerHTML = isEditing ? `...` : `...`; // Simplified for brevity
                     if (isEditing) {
                         tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td><td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td><td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="save-item text-green-600 hover:text-green-900">儲存</button><button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button></td>`;
                     } else {
@@ -616,8 +615,8 @@
             addEventForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 try {
-                    await addDoc(appDataCollectionRef, { // Use single collection ref
-                        type: 'event', // Add type field
+                    await addDoc(appDataCollectionRef, {
+                        type: 'event',
                         date: document.getElementById('event-date').value, matter: document.getElementById('event-matter').value,
                         personnel: document.getElementById('event-personnel').value, closed: document.getElementById('event-closed').checked,
                         createdAt: serverTimestamp()
@@ -628,32 +627,55 @@
 
             contentTracking.addEventListener('click', async (e) => {
                 const target = e.target;
+                const id = target.dataset.id;
+                const tr = target.closest('tr');
+
                 if (target.classList.contains('delete-event')) {
-                    const id = target.dataset.id;
                     showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
                 } else if (target.classList.contains('toggle-event-closed')) {
-                    const id = target.dataset.id;
                     const item = allEventItems.find(i => i.id === id);
                     if (item) {
                         try {
-                            const docRef = doc(appDataCollectionRef, id);
-                            await updateDoc(docRef, { closed: !item.closed });
-                        } catch (error) {
-                            showNotification(`更新狀態失敗: ${error.message}`);
-                        }
+                            await updateDoc(doc(appDataCollectionRef, id), { closed: !item.closed });
+                        } catch (error) { showNotification(`更新狀態失敗: ${error.message}`); }
                     }
                 } else if (target.classList.contains('view-event-detail')) {
-                    const id = target.dataset.id;
                     const item = allEventItems.find(i => i.id === id);
-                    if(item) {
-                        populateAndShowEventDetailModal(item);
+                    if(item) populateAndShowEventDetailModal(item);
+                } else if (target.classList.contains('edit-event')) {
+                    editingEventId = id;
+                    renderEventItems();
+                } else if (target.classList.contains('cancel-edit-event')) {
+                    editingEventId = null;
+                    renderEventItems();
+                } else if (target.classList.contains('save-event')) {
+                     if (tr) {
+                        try {
+                            const updatedData = {
+                                date: tr.querySelector('.edit-event-date').value,
+                                matter: tr.querySelector('.edit-event-matter').value,
+                                personnel: tr.querySelector('.edit-event-personnel').value,
+                            };
+                            await updateDoc(doc(appDataCollectionRef, id), updatedData);
+                            editingEventId = null;
+                        } catch (error) {
+                            showNotification(`儲存失敗: ${error.message}`);
+                            editingEventId = null;
+                            renderEventItems();
+                        }
                     }
                 }
             });
 
             printEventListBtn.addEventListener('click', () => {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('event-print-date').textContent = `日期：${yyyy}/${mm}/${dd}`;
+                
                 document.body.classList.add('is-printing-list');
-                renderEventItems(); // Re-render with all items for printing
+                renderEventItems();
                 window.print();
             });
 
@@ -673,18 +695,31 @@
                 
                 itemsToRender.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
-                        <td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm">
-                            <input type="checkbox" data-id="${item.id}" class="toggle-event-closed align-middle h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${item.closed ? 'checked' : ''}>
-                            <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
-                        </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                            <button data-id="${item.id}" class="view-event-detail text-blue-600 hover:text-blue-900 mr-4">查看</button>
-                            <button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button>
-                        </td>`;
+                    if (item.id === editingEventId && !isPrinting) {
+                        tr.innerHTML = `
+                            <td class="px-4 py-4"><input type="date" class="edit-input edit-event-date" value="${item.date}"></td>
+                            <td class="px-4 py-4"><input type="text" class="edit-input edit-event-matter" value="${item.matter || ''}"></td>
+                            <td class="px-4 py-4"><input type="text" class="edit-input edit-event-personnel" value="${item.personnel || ''}"></td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="ml-2 align-middle ${item.closed ? 'text-gray-500' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span></td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button data-id="${item.id}" class="save-event text-green-600 hover:text-green-900 mr-4">儲存</button>
+                                <button data-id="${item.id}" class="cancel-edit-event text-gray-600 hover:text-gray-900">取消</button>
+                            </td>`;
+                    } else {
+                        tr.innerHTML = `
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
+                            <td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                <input type="checkbox" data-id="${item.id}" class="toggle-event-closed align-middle h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${item.closed ? 'checked' : ''}>
+                                <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button data-id="${item.id}" class="view-event-detail text-blue-600 hover:text-blue-900 mr-4">查看</button>
+                                <button data-id="${item.id}" class="edit-event text-indigo-600 hover:text-indigo-900 mr-4">編輯</button>
+                                <button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button>
+                            </td>`;
+                    }
                     eventItemsList.appendChild(tr);
                 });
             };
@@ -699,9 +734,9 @@
                 const status = document.getElementById('feedback-status').value;
                 if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
                 try {
-                    await addDoc(appDataCollectionRef, { // Use single collection ref
-                        type: 'feedback', // Add type field
-                        feedbackType: document.getElementById('feedback-type').value, // Renamed to avoid conflict
+                    await addDoc(appDataCollectionRef, {
+                        type: 'feedback',
+                        feedbackType: document.getElementById('feedback-type').value,
                         problem: document.getElementById('feedback-problem').value,
                         solution: solution, status: status, createdAt: serverTimestamp()
                     });
@@ -712,7 +747,7 @@
             contentFeedback.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('delete-feedback')) {
                     const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id))); // Use single collection ref
+                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
                 }
             });
 
