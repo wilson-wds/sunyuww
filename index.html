@@ -221,9 +221,19 @@
                 </form>
 
                 <div class="border-b pb-3 mb-6 print-hide">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <h2 class="text-2xl font-bold">事件追蹤列表</h2>
                         <div class="flex items-center space-x-4">
+                             <div>
+                                <label for="event-sortSelect" class="sr-only">排序方式</label>
+                                <select id="event-sortSelect" class="w-full sm:w-auto px-3 py-2 border rounded-md">
+                                    <option value="createdAt-desc">最新建立</option>
+                                    <option value="createdAt-asc">最舊建立</option>
+                                    <option value="date-desc">日期 (新到舊)</option>
+                                    <option value="date-asc">日期 (舊到新)</option>
+                                    <option value="status-pending">狀態 (處理中優先)</option>
+                                </select>
+                            </div>
                             <input type="text" id="event-searchInput" placeholder="查詢事項或人員..." class="w-full sm:w-auto px-3 py-2 border rounded-md">
                             <button id="printEventListBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex-shrink-0">列印列表</button>
                         </div>
@@ -363,6 +373,7 @@
         const addEventForm = document.getElementById('addEventForm');
         const eventItemsList = document.getElementById('event-itemsList');
         const eventSearchInput = document.getElementById('event-searchInput');
+        const eventSortSelect = document.getElementById('event-sortSelect');
         const printEventListBtn = document.getElementById('printEventListBtn');
         const paginationContainerEvent = document.getElementById('pagination-container-event');
         const pageInfoEvent = document.getElementById('page-info-event');
@@ -413,6 +424,7 @@
         let editingItemId = null;
         let editingEventId = null;
         let currentFilter = 'all';
+        let currentEventSort = 'createdAt-desc';
         let newItemsToHighlight = new Set();
         let currentPageTodo = 1, currentPageEvent = 1, currentPageFeedback = 1;
         const itemsPerPage = 8;
@@ -683,11 +695,38 @@
                 renderEventItems();
                 window.print();
             });
+            
+            eventSortSelect.addEventListener('change', (e) => {
+                currentEventSort = e.target.value;
+                currentPageEvent = 1;
+                renderEventItems();
+            });
 
             const renderEventItems = () => {
                 const isPrinting = document.body.classList.contains('is-printing-list');
                 const searchTerm = eventSearchInput.value.toLowerCase();
-                const filteredList = allEventItems.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
+                
+                let sortedList = [...allEventItems];
+                switch (currentEventSort) {
+                    case 'createdAt-asc':
+                        sortedList.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+                        break;
+                    case 'date-desc':
+                        sortedList.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        break;
+                    case 'date-asc':
+                        sortedList.sort((a, b) => new Date(a.date) - new Date(b.date));
+                        break;
+                    case 'status-pending':
+                        sortedList.sort((a, b) => a.closed - b.closed);
+                        break;
+                    case 'createdAt-desc':
+                    default:
+                        sortedList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                        break;
+                }
+
+                const filteredList = sortedList.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
                 
                 const itemsToRender = isPrinting ? filteredList : filteredList.slice((currentPageEvent - 1) * itemsPerPage, currentPageEvent * itemsPerPage);
 
