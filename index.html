@@ -108,7 +108,7 @@
                 border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 5px solid #e5e7eb;
+                border: 1px solid #e5e7eb;
                 padding: 8px;
                 font-size: 10pt;
                 text-align: left;
@@ -511,11 +511,51 @@
         tabTracking.addEventListener('click', () => switchTab('tracking'));
         tabFeedback.addEventListener('click', () => switchTab('feedback'));
 
-        // --- Firebase 設定 ---
-        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const manualFirebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
-        if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) { firebaseConfig = manualFirebaseConfig; }
-        const appId = typeof __app_id !== 'undefined' ? __app_id : (firebaseConfig.projectId || 'default-app-id');
+        // --- Firebase 設定 (持久化以解決重新整理問題) ---
+        const getFirebaseConfig = () => {
+            try {
+                const storedConfig = sessionStorage.getItem('firebaseConfig');
+                if (storedConfig) return JSON.parse(storedConfig);
+            } catch (e) {
+                console.error("無法從 sessionStorage 解析 firebaseConfig", e);
+            }
+
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    const envConfig = JSON.parse(__firebase_config);
+                    sessionStorage.setItem('firebaseConfig', JSON.stringify(envConfig));
+                    return envConfig;
+                } catch (e) {
+                     console.error("無法解析 __firebase_config", e);
+                }
+            }
+            
+            const manualFirebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
+            sessionStorage.setItem('firebaseConfig', JSON.stringify(manualFirebaseConfig));
+            return manualFirebaseConfig;
+        };
+
+        const getAppId = (config) => {
+            try {
+                const storedAppId = sessionStorage.getItem('appId');
+                if (storedAppId) return storedAppId;
+            } catch (e) {
+                console.error("無法從 sessionStorage 取得 appId", e);
+            }
+
+            if (typeof __app_id !== 'undefined' && __app_id) {
+                sessionStorage.setItem('appId', __app_id);
+                return __app_id;
+            }
+
+            const fallbackId = config.projectId || 'default-app-id';
+            sessionStorage.setItem('appId', fallbackId);
+            return fallbackId;
+        };
+
+        const firebaseConfig = getFirebaseConfig();
+        const appId = getAppId(firebaseConfig);
+
 
         // --- Firebase 初始化 ---
         if (!firebaseConfig || !firebaseConfig.apiKey) {
@@ -772,7 +812,7 @@
                 
                 const listToDisplay = allEventItems.filter(item => {
                     const isArchived = item.archived === true;
-                    return eventViewMode === 'archived' ? isArchived : !isArchived;
+                    return isPrinting ? !isArchived : (eventViewMode === 'archived' ? isArchived : !isArchived);
                 });
                 
                 let sortedList = [...listToDisplay];
