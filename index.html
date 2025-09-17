@@ -108,7 +108,7 @@
                 border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 5px solid #e5e7eb;
+                border: 1px solid #e5e7eb;
                 padding: 8px;
                 font-size: 10pt;
                 text-align: left;
@@ -122,6 +122,13 @@
             body.is-printing-list td:last-child,
             body.is-printing-list th:last-child {
                 display: none;
+            }
+            
+            /* Highlight for closed items on print */
+            body.is-printing-list tr.event-item-closed td {
+                background-color: #f3f4f6 !important; /* gray-100 */
+                -webkit-print-color-adjust: exact; /* Ensures background color prints in Chrome/Safari */
+                print-color-adjust: exact; /* Standard property */
             }
         }
         /* --- END: 優化後的列印專用樣式 --- */
@@ -269,7 +276,7 @@
                 </div>
                 <div class="table-container">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">順序</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
+                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">優先順序</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
                         <tbody id="event-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
@@ -795,6 +802,9 @@
                 
                 filteredList.forEach(item => {
                     const tr = document.createElement('tr');
+                    if (item.closed) {
+                        tr.classList.add('event-item-closed');
+                    }
                     const isEditing = item.id === editingEventId && !isPrinting;
 
                     if (isEditing) {
