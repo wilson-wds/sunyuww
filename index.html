@@ -572,9 +572,21 @@
             });
 
             contentTracking.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('delete-event')) {
-                    const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id))); // Use single collection ref
+                const target = e.target;
+                if (target.classList.contains('delete-event')) {
+                    const id = target.dataset.id;
+                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
+                } else if (target.classList.contains('toggle-event-closed')) {
+                    const id = target.dataset.id;
+                    const item = allEventItems.find(i => i.id === id);
+                    if (item) {
+                        try {
+                            const docRef = doc(appDataCollectionRef, id);
+                            await updateDoc(docRef, { closed: !item.closed });
+                        } catch (error) {
+                            showNotification(`更新狀態失敗: ${error.message}`);
+                        }
+                    }
                 }
             });
 
@@ -585,7 +597,17 @@
                 eventItemsList.innerHTML = ''; document.getElementById('event-no-results').classList.toggle('hidden', filteredList.length > 0);
                 paginatedItems.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td><td class="px-4 py-4 whitespace-nowrap text-sm ${item.closed ? 'text-green-600' : 'text-yellow-600'}">${item.closed ? '已結案' : '處理中'}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button></td>`;
+                    tr.innerHTML = `
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
+                        <td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm">
+                            <input type="checkbox" data-id="${item.id}" class="toggle-event-closed align-middle h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${item.closed ? 'checked' : ''}>
+                            <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                            <button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button>
+                        </td>`;
                     eventItemsList.appendChild(tr);
                 });
                 setupPagination(filteredList.length, currentPageEvent, paginationContainerEvent, pageInfoEvent, paginationButtonsEvent, (page) => { currentPageEvent = page; renderEventItems(); });
@@ -603,7 +625,8 @@
                 try {
                     await addDoc(appDataCollectionRef, { // Use single collection ref
                         type: 'feedback', // Add type field
-                        type: document.getElementById('feedback-type').value, problem: document.getElementById('feedback-problem').value,
+                        feedbackType: document.getElementById('feedback-type').value, // Renamed to avoid conflict
+                        problem: document.getElementById('feedback-problem').value,
                         solution: solution, status: status, createdAt: serverTimestamp()
                     });
                     addFeedbackForm.reset();
@@ -619,12 +642,12 @@
 
             const renderFeedbackItems = () => {
                 const filterType = feedbackFilterType.value;
-                const filteredList = allFeedbackItems.filter(item => !filterType || item.type === filterType);
+                const filteredList = allFeedbackItems.filter(item => !filterType || item.feedbackType === filterType);
                 const paginatedItems = filteredList.slice((currentPageFeedback - 1) * itemsPerPage, currentPageFeedback * itemsPerPage);
                 feedbackItemsList.innerHTML = ''; document.getElementById('feedback-no-results').classList.toggle('hidden', filteredList.length > 0);
                 paginatedItems.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.type}</td><td class="px-4 py-4 text-sm text-gray-900 max-w-xs truncate" title="${item.problem}">${item.problem}</td><td class="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title="${item.solution}">${item.solution || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm ${item.status === '已結案' ? 'text-green-600' : 'text-yellow-600'}">${item.status}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button data-id="${item.id}" class="delete-feedback text-red-600 hover:text-red-900">刪除</button></td>`;
+                    tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.feedbackType}</td><td class="px-4 py-4 text-sm text-gray-900 max-w-xs truncate" title="${item.problem}">${item.problem}</td><td class="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title="${item.solution}">${item.solution || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm ${item.status === '已結案' ? 'text-green-600' : 'text-yellow-600'}">${item.status}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button data-id="${item.id}" class="delete-feedback text-red-600 hover:text-red-900">刪除</button></td>`;
                     feedbackItemsList.appendChild(tr);
                 });
                 setupPagination(filteredList.length, currentPageFeedback, paginationContainerFeedback, pageInfoFeedback, paginationButtonsFeedback, (page) => { currentPageFeedback = page; renderFeedbackItems(); });
@@ -669,5 +692,4 @@
     </script>
 </body>
 </html>
-
 
