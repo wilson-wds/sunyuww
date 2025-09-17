@@ -746,14 +746,25 @@
                 let sortedList = [...allEventItems];
                 const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
 
-                switch (currentEventSort) {
-                    case 'createdAt-asc': sortedList.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0)); break;
-                    case 'date-desc': sortedList.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
-                    case 'date-asc': sortedList.sort((a, b) => new Date(a.date) - new Date(b.date)); break;
-                    case 'status-pending': sortedList.sort((a, b) => a.closed - b.closed); break;
-                    case 'priority-desc': sortedList.sort((a, b) => (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3)); break;
-                    case 'createdAt-desc': default: sortedList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)); break;
-                }
+                const sortFunctions = {
+                    'createdAt-asc': (a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0),
+                    'createdAt-desc': (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
+                    'date-desc': (a, b) => new Date(b.date) - new Date(a.date),
+                    'date-asc': (a, b) => new Date(a.date) - new Date(b.date),
+                    'status-pending': (a, b) => a.closed - b.closed,
+                    'priority-desc': (a, b) => {
+                        const priorityA = priorityOrder[a.priority] || 3;
+                        const priorityB = priorityOrder[b.priority] || 3;
+                        if (priorityA !== priorityB) {
+                            return priorityA - priorityB;
+                        }
+                        // If priorities are the same, sort by creation date (newest first)
+                        return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+                    }
+                };
+
+                sortedList.sort(sortFunctions[currentEventSort] || sortFunctions['createdAt-desc']);
+
 
                 const filteredList = sortedList.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
                 
