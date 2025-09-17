@@ -374,17 +374,11 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM 元素 ---
-        const authContainer = document.getElementById('auth-container');
-        const googleSigninBtn = document.getElementById('google-signin-btn');
-        const userInfoDiv = document.getElementById('user-info');
-        const userNameSpan = document.getElementById('user-name');
-        const signoutBtn = document.getElementById('signout-btn');
         const mainContent = document.getElementById('main-content');
-
         const tabTodo = document.getElementById('tab-todo');
         const tabTracking = document.getElementById('tab-tracking');
         const tabFeedback = document.getElementById('tab-feedback');
@@ -396,6 +390,7 @@
         const addItemForm = document.getElementById('addItemForm');
         const todoItemsList = document.getElementById('todo-itemsList');
         const todoSearchInput = document.getElementById('todo-searchInput');
+        const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
         const filterAllBtn = document.getElementById('filter-all');
         const filterPendingBtn = document.getElementById('filter-pending');
         const filterCompletedBtn = document.getElementById('filter-completed');
@@ -463,7 +458,7 @@
         let currentPageTodo = 1, currentPageFeedback = 1;
         const itemsPerPage = 8;
         let db, auth;
-        let userAppDataCollectionRef;
+        let appDataCollectionRef;
 
 
         // --- 日期初始化 ---
@@ -516,10 +511,6 @@
             }
         };
 
-        tabTodo.addEventListener('click', () => switchTab('todo'));
-        tabTracking.addEventListener('click', () => switchTab('tracking'));
-        tabFeedback.addEventListener('click', () => switchTab('feedback'));
-
         // --- Firebase 設定 ---
         const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
         const appId = "sunyu-check";
@@ -533,54 +524,24 @@
             auth = getAuth(app);
             db = getFirestore(app);
             
-            googleSigninBtn.addEventListener('click', async () => {
-                const provider = new GoogleAuthProvider();
-                try {
-                    await signInWithPopup(auth, provider);
-                } catch (error) {
-                    console.error("Google 登入失敗:", error);
-                    authStatus.textContent = `登入失敗: ${error.message}`;
-                }
-            });
+            appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
 
-            signoutBtn.addEventListener('click', () => {
-                signOut(auth);
-            });
-
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 if (user) {
-                    // User is signed in.
-                    authStatus.textContent = `已登入為 ${user.displayName}`;
-                    googleSigninBtn.classList.add('hidden');
-                    userInfoDiv.classList.remove('hidden');
-                    userInfoDiv.classList.add('flex');
-                    userNameSpan.textContent = user.displayName;
+                    authStatus.textContent = `已連線 | 公開共享模式`;
+                    document.querySelector('#addEventForm button[type="submit"]').disabled = false;
+                    document.querySelector('#addFeedbackForm button[type="submit"]').disabled = false;
+                    todoSubmitButton.disabled = false;
                     mainContent.classList.remove('hidden');
-
-                    // Set up the data path for the logged-in user
-                    userAppDataCollectionRef = collection(db, `/artifacts/${appId}/users/${user.uid}/appData`);
                     listenForAllData();
-
                 } else {
-                    // User is signed out.
-                    authStatus.textContent = '請先登入以使用系統。';
-                    googleSigninBtn.classList.remove('hidden');
-                    userInfoDiv.classList.add('hidden');
-                    userInfoDiv.classList.remove('flex');
-                    userNameSpan.textContent = '';
-                    mainContent.classList.add('hidden');
-                    
-                    // Clear all data and unsubscribe
-                    if (unsubscribeAllData) {
-                        unsubscribeAllData();
-                        unsubscribeAllData = null;
+                    authStatus.textContent = '正在驗證身份...';
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("匿名登入失敗:", error);
+                        authStatus.textContent = `錯誤：無法連接。 ${error.message}`;
                     }
-                    allTodoItems = [];
-                    allEventItems = [];
-                    allFeedbackItems = [];
-                    renderTodoItems();
-                    renderEventItems();
-                    renderFeedbackItems();
                 }
             });
 
@@ -589,9 +550,9 @@
             // =================================================================
             const listenForAllData = () => {
                 if (unsubscribeAllData) unsubscribeAllData();
-                 if (!userAppDataCollectionRef) return;
+                 if (!appDataCollectionRef) return;
 
-                unsubscribeAllData = onSnapshot(userAppDataCollectionRef, (snapshot) => {
+                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
                     allTodoItems = [];
                     allEventItems = [];
                     allFeedbackItems = [];
@@ -617,62 +578,195 @@
                     renderFeedbackItems();
                 });
             };
+            
+            // Function to set up all event listeners for the main content
+            const setupEventListeners = () => {
+                tabTodo.addEventListener('click', () => switchTab('todo'));
+                tabTracking.addEventListener('click', () => switchTab('tracking'));
+                tabFeedback.addEventListener('click', () => switchTab('feedback'));
 
+                // =================================================================
+                // --- 待修改明細 (Todo) Section ---
+                // =================================================================
+                addItemForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    if (!appDataCollectionRef) return;
+                    const imageFile = document.getElementById('todo-imageUpload').files[0];
+                    if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        try {
+                            const docRef = await addDoc(appDataCollectionRef, {
+                                type: 'todo',
+                                productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
+                                partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
+                                date: document.getElementById('todo-date').value, image: reader.result || null,
+                                completed: false, createdAt: serverTimestamp()
+                            });
+                            newItemsToHighlight.add(docRef.id);
+                            addItemForm.reset();
+                            document.getElementById('todo-date').valueAsDate = new Date();
+                        } catch (error) { showNotification(`新增待辦失敗: ${error.message}`); }
+                    };
+                    if (imageFile) reader.readAsDataURL(imageFile); else reader.onloadend();
+                });
 
-            // =================================================================
-            // --- 待修改明細 (Todo) Section ---
-            // =================================================================
-            addItemForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (!userAppDataCollectionRef) return;
-                const imageFile = document.getElementById('todo-imageUpload').files[0];
-                if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
-                const reader = new FileReader();
-                reader.onloadend = async () => {
+                document.getElementById('list-container-todo').addEventListener('click', async (e) => {
+                    const target = e.target; const tr = target.closest('tr'); if (!tr) return;
+                    const id = tr.dataset.id; 
+                    if (!appDataCollectionRef) return;
+                    const docRef = doc(appDataCollectionRef, id);
+                    if (target.classList.contains('toggle-complete')) {
+                        const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
+                    } else if (target.classList.contains('delete-item')) {
+                        showConfirmation('您確定要刪除這個項目嗎？', () => deleteDoc(docRef));
+                    } else if (target.classList.contains('view-image')) {
+                        const item = allTodoItems.find(i => i.id === id); if (item && item.image) { modalImage.src = item.image; imageModal.classList.remove('hidden'); }
+                    } else if (target.classList.contains('view-detail')) { 
+                        const item = allTodoItems.find(i => i.id === id); if (item) { populateAndShowDetailModal(item); }
+                    } else if (target.classList.contains('edit-item')) {
+                        editingItemId = id; renderTodoItems();
+                    } else if (target.classList.contains('cancel-edit')) {
+                        editingItemId = null; renderTodoItems();
+                    } else if (target.classList.contains('save-item')) {
+                        try {
+                            await updateDoc(docRef, {
+                                productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
+                                partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
+                                date: tr.querySelector('.edit-date').value,
+                            });
+                            editingItemId = null;
+                        } catch(error) { showNotification(`儲存失败: ${error.message}`); }
+                    }
+                });
+                
+                filterAllBtn.addEventListener('click', () => setFilter('all')); 
+                filterPendingBtn.addEventListener('click', () => setFilter('pending')); 
+                filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
+                todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
+
+                // =================================================================
+                // --- 事件追蹤 (Event) Section ---
+                // =================================================================
+                addEventForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!appDataCollectionRef) return;
                     try {
-                        const docRef = await addDoc(userAppDataCollectionRef, {
-                            type: 'todo',
-                            productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
-                            partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
-                            date: document.getElementById('todo-date').value, image: reader.result || null,
-                            completed: false, createdAt: serverTimestamp()
+                        await addDoc(appDataCollectionRef, {
+                            type: 'event',
+                            date: document.getElementById('event-date').value, 
+                            matter: document.getElementById('event-matter').value,
+                            personnel: document.getElementById('event-personnel').value, 
+                            closed: document.getElementById('event-closed').checked,
+                            priority: document.getElementById('event-priority').value,
+                            archived: false, // New field for archiving
+                            createdAt: serverTimestamp()
                         });
-                        newItemsToHighlight.add(docRef.id);
-                        addItemForm.reset();
-                        document.getElementById('todo-date').valueAsDate = new Date();
-                    } catch (error) { showNotification(`新增待辦失敗: ${error.message}`); }
-                };
-                if (imageFile) reader.readAsDataURL(imageFile); else reader.onloadend();
-            });
+                        addEventForm.reset(); 
+                        document.getElementById('event-date').valueAsDate = new Date();
+                    } catch (error) { showNotification(`新增事件失敗: ${error.message}`); }
+                });
 
-            document.getElementById('list-container-todo').addEventListener('click', async (e) => {
-                const target = e.target; const tr = target.closest('tr'); if (!tr) return;
-                const id = tr.dataset.id; 
-                if (!userAppDataCollectionRef) return;
-                const docRef = doc(userAppDataCollectionRef, id);
-                if (target.classList.contains('toggle-complete')) {
-                    const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
-                } else if (target.classList.contains('delete-item')) {
-                    showConfirmation('您確定要刪除這個項目嗎？', () => deleteDoc(docRef));
-                } else if (target.classList.contains('view-image')) {
-                    const item = allTodoItems.find(i => i.id === id); if (item && item.image) { modalImage.src = item.image; imageModal.classList.remove('hidden'); }
-                } else if (target.classList.contains('view-detail')) { 
-                    const item = allTodoItems.find(i => i.id === id); if (item) { populateAndShowDetailModal(item); }
-                } else if (target.classList.contains('edit-item')) {
-                    editingItemId = id; renderTodoItems();
-                } else if (target.classList.contains('cancel-edit')) {
-                    editingItemId = null; renderTodoItems();
-                } else if (target.classList.contains('save-item')) {
+                contentTracking.addEventListener('click', async (e) => {
+                    const target = e.target;
+                    const id = target.dataset.id;
+                    const tr = target.closest('tr');
+                    if (!id || !appDataCollectionRef) return;
+                    const docRef = doc(appDataCollectionRef, id);
+
+                    if (target.classList.contains('delete-event')) {
+                        showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
+                    } else if (target.classList.contains('archive-event')) {
+                        await updateDoc(docRef, { archived: true });
+                    } else if (target.classList.contains('unarchive-event')) {
+                        await updateDoc(docRef, { archived: false });
+                    } else if (target.classList.contains('toggle-event-closed')) {
+                        const item = allEventItems.find(i => i.id === id);
+                        if (item) await updateDoc(docRef, { closed: !item.closed });
+                    } else if (target.classList.contains('view-event-detail')) {
+                        const item = allEventItems.find(i => i.id === id);
+                        if(item) populateAndShowEventDetailModal(item);
+                    } else if (target.classList.contains('edit-event')) {
+                        editingEventId = id;
+                        renderEventItems();
+                    } else if (target.classList.contains('cancel-edit-event')) {
+                        editingEventId = null;
+                        renderEventItems();
+                    } else if (target.classList.contains('save-event')) {
+                         if (tr) {
+                            try {
+                                const updatedData = {
+                                    date: tr.querySelector('.edit-event-date').value,
+                                    matter: tr.querySelector('.edit-event-matter').value,
+                                    personnel: tr.querySelector('.edit-event-personnel').value,
+                                    priority: tr.querySelector('.edit-event-priority').value
+                                };
+                                await updateDoc(docRef, updatedData);
+                                editingEventId = null;
+                            } catch (error) {
+                                showNotification(`儲存失敗: ${error.message}`);
+                                editingEventId = null;
+                                renderEventItems();
+                            }
+                        }
+                    }
+                });
+
+                printEventListBtn.addEventListener('click', () => {
+                    const today = new Date();
+                    const yyyy = today.getFullYear();
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    document.getElementById('event-print-date').textContent = `日期：${yyyy}/${mm}/${dd}`;
+                    
+                    document.body.classList.add('is-printing-list');
+                    renderEventItems();
+                    window.print();
+                });
+                
+                eventViewActiveBtn.addEventListener('click', () => setEventViewMode('active'));
+                eventViewArchivedBtn.addEventListener('click', () => setEventViewMode('archived'));
+                eventSortSelect.addEventListener('change', (e) => {
+                    currentEventSort = e.target.value;
+                    renderEventItems();
+                });
+                eventSearchInput.addEventListener('input', renderEventItems);
+
+
+                // =================================================================
+                // --- 問題反饋 (Feedback) Section ---
+                // =================================================================
+                 addFeedbackForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!appDataCollectionRef) return;
+                    const solution = document.getElementById('feedback-solution').value;
+                    const status = document.getElementById('feedback-status').value;
+                    if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
                     try {
-                        await updateDoc(docRef, {
-                            productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
-                            partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
-                            date: tr.querySelector('.edit-date').value,
+                        await addDoc(appDataCollectionRef, {
+                            type: 'feedback',
+                            feedbackType: document.getElementById('feedback-type').value,
+                            problem: document.getElementById('feedback-problem').value,
+                            solution: solution, status: status, createdAt: serverTimestamp()
                         });
-                        editingItemId = null;
-                    } catch(error) { showNotification(`儲存失败: ${error.message}`); }
-                }
-            });
+                        addFeedbackForm.reset();
+                    } catch (error) { showNotification(`新增反饋失敗: ${error.message}`); }
+                });
+
+                contentFeedback.addEventListener('click', async (e) => {
+                    if (e.target.classList.contains('delete-feedback')) {
+                        if (!appDataCollectionRef) return;
+                        const id = e.target.dataset.id;
+                        showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
+                    }
+                });
+
+                feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
+            }
+            
+            // Call setup function once
+            setupEventListeners();
+
 
             const renderTodoItems = () => {
                 const searchTerm = todoSearchInput.value.toLowerCase();
@@ -695,101 +789,7 @@
             
             const setFilter = (filter) => { currentPageTodo = 1; currentFilter = filter; renderTodoItems(); updateFilterButtons(); };
             const updateFilterButtons = () => { filterAllBtn.classList.toggle('active', currentFilter === 'all'); filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); filterCompletedBtn.classList.toggle('active', currentFilter === 'completed'); };
-            filterAllBtn.addEventListener('click', () => setFilter('all')); filterPendingBtn.addEventListener('click', () => setFilter('pending')); filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
-            todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
-
-            // =================================================================
-            // --- 事件追蹤 (Event) Section ---
-            // =================================================================
-            addEventForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                if (!userAppDataCollectionRef) return;
-                try {
-                    await addDoc(userAppDataCollectionRef, {
-                        type: 'event',
-                        date: document.getElementById('event-date').value, 
-                        matter: document.getElementById('event-matter').value,
-                        personnel: document.getElementById('event-personnel').value, 
-                        closed: document.getElementById('event-closed').checked,
-                        priority: document.getElementById('event-priority').value,
-                        archived: false, // New field for archiving
-                        createdAt: serverTimestamp()
-                    });
-                    addEventForm.reset(); 
-                    document.getElementById('event-date').valueAsDate = new Date();
-                } catch (error) { showNotification(`新增事件失敗: ${error.message}`); }
-            });
-
-            contentTracking.addEventListener('click', async (e) => {
-                const target = e.target;
-                const id = target.dataset.id;
-                const tr = target.closest('tr');
-                if (!id || !userAppDataCollectionRef) return;
-                const docRef = doc(userAppDataCollectionRef, id);
-
-                if (target.classList.contains('delete-event')) {
-                    showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
-                } else if (target.classList.contains('archive-event')) {
-                    await updateDoc(docRef, { archived: true });
-                } else if (target.classList.contains('unarchive-event')) {
-                    await updateDoc(docRef, { archived: false });
-                } else if (target.classList.contains('toggle-event-closed')) {
-                    const item = allEventItems.find(i => i.id === id);
-                    if (item) await updateDoc(docRef, { closed: !item.closed });
-                } else if (target.classList.contains('view-event-detail')) {
-                    const item = allEventItems.find(i => i.id === id);
-                    if(item) populateAndShowEventDetailModal(item);
-                } else if (target.classList.contains('edit-event')) {
-                    editingEventId = id;
-                    renderEventItems();
-                } else if (target.classList.contains('cancel-edit-event')) {
-                    editingEventId = null;
-                    renderEventItems();
-                } else if (target.classList.contains('save-event')) {
-                     if (tr) {
-                        try {
-                            const updatedData = {
-                                date: tr.querySelector('.edit-event-date').value,
-                                matter: tr.querySelector('.edit-event-matter').value,
-                                personnel: tr.querySelector('.edit-event-personnel').value,
-                                priority: tr.querySelector('.edit-event-priority').value
-                            };
-                            await updateDoc(docRef, updatedData);
-                            editingEventId = null;
-                        } catch (error) {
-                            showNotification(`儲存失敗: ${error.message}`);
-                            editingEventId = null;
-                            renderEventItems();
-                        }
-                    }
-                }
-            });
-
-            printEventListBtn.addEventListener('click', () => {
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                const dd = String(today.getDate()).padStart(2, '0');
-                document.getElementById('event-print-date').textContent = `日期：${yyyy}/${mm}/${dd}`;
-                
-                document.body.classList.add('is-printing-list');
-                renderEventItems();
-                window.print();
-            });
             
-            const setEventViewMode = (mode) => {
-                eventViewMode = mode;
-                eventViewActiveBtn.classList.toggle('active', mode === 'active');
-                eventViewArchivedBtn.classList.toggle('active', mode === 'archived');
-                renderEventItems();
-            };
-
-            eventViewActiveBtn.addEventListener('click', () => setEventViewMode('active'));
-            eventViewArchivedBtn.addEventListener('click', () => setEventViewMode('archived'));
-            eventSortSelect.addEventListener('change', (e) => {
-                currentEventSort = e.target.value;
-                renderEventItems();
-            });
 
             const getPriorityIcon = (priority) => {
                 let colorClass, number;
@@ -896,35 +896,7 @@
                     eventItemsList.appendChild(tr);
                 });
             };
-            eventSearchInput.addEventListener('input', renderEventItems);
-
-            // =================================================================
-            // --- 問題反饋 (Feedback) Section ---
-            // =================================================================
-             addFeedbackForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                if (!userAppDataCollectionRef) return;
-                const solution = document.getElementById('feedback-solution').value;
-                const status = document.getElementById('feedback-status').value;
-                if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
-                try {
-                    await addDoc(userAppDataCollectionRef, {
-                        type: 'feedback',
-                        feedbackType: document.getElementById('feedback-type').value,
-                        problem: document.getElementById('feedback-problem').value,
-                        solution: solution, status: status, createdAt: serverTimestamp()
-                    });
-                    addFeedbackForm.reset();
-                } catch (error) { showNotification(`新增反饋失敗: ${error.message}`); }
-            });
-
-            contentFeedback.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('delete-feedback')) {
-                    if (!userAppDataCollectionRef) return;
-                    const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(userAppDataCollectionRef, id)));
-                }
-            });
+            
 
             const renderFeedbackItems = () => {
                 const filterType = feedbackFilterType.value;
@@ -938,7 +910,7 @@
                 });
                 setupPagination(filteredList.length, currentPageFeedback, paginationContainerFeedback, pageInfoFeedback, paginationButtonsFeedback, (page) => { currentPageFeedback = page; renderFeedbackItems(); });
             };
-            feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
+            
         }
         
         // --- 通用分頁控制 ---
