@@ -82,24 +82,46 @@
             body:not(.is-printing-list) #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
 
             /* --- PRINTING THE EVENT LIST --- */
-            body.is-printing-list > * {
-                display: none;
+            /* When printing the list, hide the other main content tabs */
+            body.is-printing-list #content-todo,
+            body.is-printing-list #content-feedback {
+                display: none !important;
             }
+
+            /* Ensure the main container and tracking content are visible and take up the page */
+            body.is-printing-list main,
             body.is-printing-list #content-tracking {
                 display: block !important;
             }
+
+            /* Reset container styles for a clean print page */
             body.is-printing-list #content-tracking .bg-white {
-                box-shadow: none; border: none; padding: 0;
+                box-shadow: none;
+                border: none;
+                padding: 0;
             }
-            body.is-printing-list #addEventForm { display: none; }
-            body.is-printing-list table { width: 100%; border-collapse: collapse; }
+            
+            /* Style the table for a professional print look */
+            body.is-printing-list table {
+                width: 100%;
+                border-collapse: collapse;
+            }
             body.is-printing-list th, body.is-printing-list td {
-                border: 1px solid #e5e7eb; padding: 8px; font-size: 10pt;
+                border: 1px solid #e5e7eb; /* light gray border */
+                padding: 8px;
+                font-size: 10pt;
+                text-align: left;
             }
-            body.is-printing-list thead { background-color: #f9fafb; }
-            body.is-printing-list .toggle-event-closed { display: none; }
-            body.is-printing-list td:last-child, body.is-printing-list th:last-child {
-                display: none; /* Hide the entire actions column */
+            body.is-printing-list thead {
+                background-color: #f9fafb; /* very light gray background for header */
+                display: table-header-group; /* Important: repeats the header on each printed page */
+            }
+
+            /* Hide interactive elements that don't make sense on paper */
+            body.is-printing-list .toggle-event-closed,
+            body.is-printing-list td:last-child, /* Hides the "actions" column content */
+            body.is-printing-list th:last-child { /* Hides the "actions" column header */
+                display: none;
             }
         }
         /* --- END: 優化後的列印專用樣式 --- */
