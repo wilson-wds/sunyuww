@@ -358,7 +358,7 @@
 
         // --- 狀態變數 ---
         let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
-        let unsubscribeTodo = null, unsubscribeEvents = null, unsubscribeFeedback = null;
+        let unsubscribeAllData = null; // Changed from three separate unsubscribes
         let confirmCallback = null;
         let editingItemId = null;
         let currentFilter = 'all'; // for todo
@@ -419,17 +419,16 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
             
-            const todoCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
-            const eventCollectionRef = collection(db, `/artifacts/${appId}/public/data/eventTrackingItems`);
-            const feedbackCollectionRef = collection(db, `/artifacts/${appId}/public/data/feedbackItems`);
+            // --- Consolidated Collection Reference ---
+            // All data types will be stored in this single collection with a 'type' field to differentiate them.
+            // This is to work around potential security rule restrictions on creating new collections.
+            const appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     authStatus.textContent = `已連線 | 公開共享模式`;
                     todoSubmitButton.disabled = false;
-                    listenForTodoItems();
-                    listenForEventItems();
-                    listenForFeedbackItems();
+                    listenForAllData(); // Single listener for all data types
                 } else {
                     authStatus.textContent = '正在驗證身份...';
                     try {
@@ -440,17 +439,48 @@
             });
 
             // =================================================================
-            // --- 待修改明細 (Todo) Section ---
+            // --- Unified Data Listener ---
             // =================================================================
-            const listenForTodoItems = () => {
-                if (unsubscribeTodo) unsubscribeTodo();
-                unsubscribeTodo = onSnapshot(todoCollectionRef, (snapshot) => {
-                    allTodoItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const listenForAllData = () => {
+                if (unsubscribeAllData) unsubscribeAllData();
+                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
+                    // Reset local arrays
+                    allTodoItems = [];
+                    allEventItems = [];
+                    allFeedbackItems = [];
+
+                    snapshot.docs.forEach(doc => {
+                        const data = { id: doc.id, ...doc.data() };
+                        switch(data.type) {
+                            case 'event':
+                                allEventItems.push(data);
+                                break;
+                            case 'feedback':
+                                allFeedbackItems.push(data);
+                                break;
+                            case 'todo':
+                            default: // For backward compatibility with old data without a 'type' field
+                                allTodoItems.push(data);
+                                break;
+                        }
+                    });
+
+                    // Sort each array by creation date
                     allTodoItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    allEventItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    allFeedbackItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    
+                    // Render all lists
                     renderTodoItems();
+                    renderEventItems();
+                    renderFeedbackItems();
                 });
             };
 
+
+            // =================================================================
+            // --- 待修改明細 (Todo) Section ---
+            // =================================================================
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const imageFile = document.getElementById('todo-imageUpload').files[0];
@@ -458,7 +488,8 @@
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     try {
-                        const docRef = await addDoc(todoCollectionRef, {
+                        const docRef = await addDoc(appDataCollectionRef, {
+                            type: 'todo', // Add type field
                             productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
                             partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
                             date: document.getElementById('todo-date').value, image: reader.result || null,
@@ -474,7 +505,7 @@
 
             document.getElementById('list-container-todo').addEventListener('click', async (e) => {
                 const target = e.target; const tr = target.closest('tr'); if (!tr) return;
-                const id = tr.dataset.id; const docRef = doc(todoCollectionRef, id);
+                const id = tr.dataset.id; const docRef = doc(appDataCollectionRef, id); // Use single collection ref
                 if (target.classList.contains('toggle-complete')) {
                     const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
                 } else if (target.classList.contains('delete-item')) {
@@ -527,19 +558,11 @@
             // =================================================================
             // --- 事件追蹤 (Event) Section ---
             // =================================================================
-            const listenForEventItems = () => {
-                if (unsubscribeEvents) unsubscribeEvents();
-                unsubscribeEvents = onSnapshot(eventCollectionRef, (snapshot) => {
-                    allEventItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    allEventItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                    renderEventItems();
-                });
-            };
-
             addEventForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 try {
-                    await addDoc(eventCollectionRef, {
+                    await addDoc(appDataCollectionRef, { // Use single collection ref
+                        type: 'event', // Add type field
                         date: document.getElementById('event-date').value, matter: document.getElementById('event-matter').value,
                         personnel: document.getElementById('event-personnel').value, closed: document.getElementById('event-closed').checked,
                         createdAt: serverTimestamp()
@@ -551,7 +574,7 @@
             contentTracking.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('delete-event')) {
                     const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(eventCollectionRef, id)));
+                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id))); // Use single collection ref
                 }
             });
 
@@ -572,22 +595,14 @@
             // =================================================================
             // --- 問題反饋 (Feedback) Section ---
             // =================================================================
-             const listenForFeedbackItems = () => {
-                if (unsubscribeFeedback) unsubscribeFeedback();
-                unsubscribeFeedback = onSnapshot(feedbackCollectionRef, (snapshot) => {
-                    allFeedbackItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    allFeedbackItems.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                    renderFeedbackItems();
-                });
-            };
-
-            addFeedbackForm.addEventListener('submit', async (e) => {
+             addFeedbackForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const solution = document.getElementById('feedback-solution').value;
                 const status = document.getElementById('feedback-status').value;
                 if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
                 try {
-                    await addDoc(feedbackCollectionRef, {
+                    await addDoc(appDataCollectionRef, { // Use single collection ref
+                        type: 'feedback', // Add type field
                         type: document.getElementById('feedback-type').value, problem: document.getElementById('feedback-problem').value,
                         solution: solution, status: status, createdAt: serverTimestamp()
                     });
@@ -598,7 +613,7 @@
             contentFeedback.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('delete-feedback')) {
                     const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(feedbackCollectionRef, id)));
+                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id))); // Use single collection ref
                 }
             });
 
@@ -654,4 +669,5 @@
     </script>
 </body>
 </html>
+
 
