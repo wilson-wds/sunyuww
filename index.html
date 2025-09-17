@@ -374,10 +374,17 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM 元素 ---
+        const authContainer = document.getElementById('auth-container');
+        const googleSigninBtn = document.getElementById('google-signin-btn');
+        const userInfoDiv = document.getElementById('user-info');
+        const userNameSpan = document.getElementById('user-name');
+        const signoutBtn = document.getElementById('signout-btn');
+        const mainContent = document.getElementById('main-content');
+
         const tabTodo = document.getElementById('tab-todo');
         const tabTracking = document.getElementById('tab-tracking');
         const tabFeedback = document.getElementById('tab-feedback');
@@ -389,7 +396,6 @@
         const addItemForm = document.getElementById('addItemForm');
         const todoItemsList = document.getElementById('todo-itemsList');
         const todoSearchInput = document.getElementById('todo-searchInput');
-        const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
         const filterAllBtn = document.getElementById('filter-all');
         const filterPendingBtn = document.getElementById('filter-pending');
         const filterCompletedBtn = document.getElementById('filter-completed');
@@ -456,6 +462,9 @@
         let newItemsToHighlight = new Set();
         let currentPageTodo = 1, currentPageFeedback = 1;
         const itemsPerPage = 8;
+        let db, auth;
+        let userAppDataCollectionRef;
+
 
         // --- 日期初始化 ---
         document.getElementById('todo-date').valueAsDate = new Date();
@@ -511,50 +520,9 @@
         tabTracking.addEventListener('click', () => switchTab('tracking'));
         tabFeedback.addEventListener('click', () => switchTab('feedback'));
 
-        // --- Firebase 設定 (持久化以解決重新整理問題) ---
-        const getFirebaseConfig = () => {
-            try {
-                const storedConfig = sessionStorage.getItem('firebaseConfig');
-                if (storedConfig) return JSON.parse(storedConfig);
-            } catch (e) {
-                console.error("無法從 sessionStorage 解析 firebaseConfig", e);
-            }
-
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                try {
-                    const envConfig = JSON.parse(__firebase_config);
-                    sessionStorage.setItem('firebaseConfig', JSON.stringify(envConfig));
-                    return envConfig;
-                } catch (e) {
-                     console.error("無法解析 __firebase_config", e);
-                }
-            }
-            
-            const manualFirebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
-            sessionStorage.setItem('firebaseConfig', JSON.stringify(manualFirebaseConfig));
-            return manualFirebaseConfig;
-        };
-
-        const getAppId = (config) => {
-            try {
-                const storedAppId = sessionStorage.getItem('appId');
-                if (storedAppId) return storedAppId;
-            } catch (e) {
-                console.error("無法從 sessionStorage 取得 appId", e);
-            }
-
-            if (typeof __app_id !== 'undefined' && __app_id) {
-                sessionStorage.setItem('appId', __app_id);
-                return __app_id;
-            }
-
-            const fallbackId = config.projectId || 'default-app-id';
-            sessionStorage.setItem('appId', fallbackId);
-            return fallbackId;
-        };
-
-        const firebaseConfig = getFirebaseConfig();
-        const appId = getAppId(firebaseConfig);
+        // --- Firebase 設定 ---
+        const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
+        const appId = "sunyu-check";
 
 
         // --- Firebase 初始化 ---
@@ -562,22 +530,57 @@
             authStatus.textContent = "錯誤：找不到 Firebase 設定。";
         } else {
             const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
+            auth = getAuth(app);
+            db = getFirestore(app);
             
-            const appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
+            googleSigninBtn.addEventListener('click', async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Google 登入失敗:", error);
+                    authStatus.textContent = `登入失敗: ${error.message}`;
+                }
+            });
 
-            onAuthStateChanged(auth, async (user) => {
+            signoutBtn.addEventListener('click', () => {
+                signOut(auth);
+            });
+
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    authStatus.textContent = `已連線 | 公開共享模式`;
-                    todoSubmitButton.disabled = false;
+                    // User is signed in.
+                    authStatus.textContent = `已登入為 ${user.displayName}`;
+                    googleSigninBtn.classList.add('hidden');
+                    userInfoDiv.classList.remove('hidden');
+                    userInfoDiv.classList.add('flex');
+                    userNameSpan.textContent = user.displayName;
+                    mainContent.classList.remove('hidden');
+
+                    // Set up the data path for the logged-in user
+                    userAppDataCollectionRef = collection(db, `/artifacts/${appId}/users/${user.uid}/appData`);
                     listenForAllData();
+
                 } else {
-                    authStatus.textContent = '正在驗證身份...';
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined') await signInWithCustomToken(auth, __initial_auth_token);
-                        else await signInAnonymously(auth);
-                    } catch (error) { authStatus.textContent = '錯誤：無法連接。'; }
+                    // User is signed out.
+                    authStatus.textContent = '請先登入以使用系統。';
+                    googleSigninBtn.classList.remove('hidden');
+                    userInfoDiv.classList.add('hidden');
+                    userInfoDiv.classList.remove('flex');
+                    userNameSpan.textContent = '';
+                    mainContent.classList.add('hidden');
+                    
+                    // Clear all data and unsubscribe
+                    if (unsubscribeAllData) {
+                        unsubscribeAllData();
+                        unsubscribeAllData = null;
+                    }
+                    allTodoItems = [];
+                    allEventItems = [];
+                    allFeedbackItems = [];
+                    renderTodoItems();
+                    renderEventItems();
+                    renderFeedbackItems();
                 }
             });
 
@@ -586,7 +589,9 @@
             // =================================================================
             const listenForAllData = () => {
                 if (unsubscribeAllData) unsubscribeAllData();
-                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
+                 if (!userAppDataCollectionRef) return;
+
+                unsubscribeAllData = onSnapshot(userAppDataCollectionRef, (snapshot) => {
                     allTodoItems = [];
                     allEventItems = [];
                     allFeedbackItems = [];
@@ -619,12 +624,13 @@
             // =================================================================
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                if (!userAppDataCollectionRef) return;
                 const imageFile = document.getElementById('todo-imageUpload').files[0];
                 if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     try {
-                        const docRef = await addDoc(appDataCollectionRef, {
+                        const docRef = await addDoc(userAppDataCollectionRef, {
                             type: 'todo',
                             productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
                             partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
@@ -641,7 +647,9 @@
 
             document.getElementById('list-container-todo').addEventListener('click', async (e) => {
                 const target = e.target; const tr = target.closest('tr'); if (!tr) return;
-                const id = tr.dataset.id; const docRef = doc(appDataCollectionRef, id);
+                const id = tr.dataset.id; 
+                if (!userAppDataCollectionRef) return;
+                const docRef = doc(userAppDataCollectionRef, id);
                 if (target.classList.contains('toggle-complete')) {
                     const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
                 } else if (target.classList.contains('delete-item')) {
@@ -695,8 +703,9 @@
             // =================================================================
             addEventForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!userAppDataCollectionRef) return;
                 try {
-                    await addDoc(appDataCollectionRef, {
+                    await addDoc(userAppDataCollectionRef, {
                         type: 'event',
                         date: document.getElementById('event-date').value, 
                         matter: document.getElementById('event-matter').value,
@@ -715,8 +724,8 @@
                 const target = e.target;
                 const id = target.dataset.id;
                 const tr = target.closest('tr');
-                if (!id) return;
-                const docRef = doc(appDataCollectionRef, id);
+                if (!id || !userAppDataCollectionRef) return;
+                const docRef = doc(userAppDataCollectionRef, id);
 
                 if (target.classList.contains('delete-event')) {
                     showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
@@ -894,11 +903,12 @@
             // =================================================================
              addFeedbackForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (!userAppDataCollectionRef) return;
                 const solution = document.getElementById('feedback-solution').value;
                 const status = document.getElementById('feedback-status').value;
                 if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
                 try {
-                    await addDoc(appDataCollectionRef, {
+                    await addDoc(userAppDataCollectionRef, {
                         type: 'feedback',
                         feedbackType: document.getElementById('feedback-type').value,
                         problem: document.getElementById('feedback-problem').value,
@@ -910,8 +920,9 @@
 
             contentFeedback.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('delete-feedback')) {
+                    if (!userAppDataCollectionRef) return;
                     const id = e.target.dataset.id;
-                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
+                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(userAppDataCollectionRef, id)));
                 }
             });
 
