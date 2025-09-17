@@ -55,30 +55,22 @@
         /* --- START: 優化後的列印專用樣式 --- */
         @media print {
             /* 隱藏主內容中除了明細視窗以外的所有元素 */
-            body > *:not(#detailModal) {
+            body > *:not(.printable-modal-container) {
                 display: none;
             }
-            /* 重設 html 和 body 以獲得乾淨的列印背景 */
-            html, body {
-                height: auto;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #fff;
-            }
-            /* 讓明細視窗容器充滿頁面，並移除固定定位 */
-            #detailModal {
-                position: static;
+             /* 確保被選擇的 modal 可見 */
+            .printable-modal-container {
                 display: block !important;
+                position: static;
                 width: 100%;
                 height: auto;
-                background: transparent; /* 移除灰色遮罩 */
+                background: transparent;
                 overflow: visible;
             }
             /* 讓可列印內容區塊正常流動，移除陰影和邊框 */
-            #printable-content {
+            .printable-content {
                 position: static;
                 width: 100%;
-                height: 98vh; /* 使用幾乎整個頁面高度 */
                 margin: 0;
                 padding: 1rem;
                 border: none;
@@ -86,8 +78,17 @@
                 max-height: none;
                 overflow: visible;
             }
-            /* 移除螢幕檢視時的滾動條容器 */
-            #printable-content > .flex-1.min-h-0.overflow-y-auto {
+             /* 隱藏明細視窗中的按鈕 */
+            .printable-modal-container .print-hide {
+                display: none;
+            }
+
+            /* --- Todo Modal Specific Print Styles --- */
+            #detailModal .printable-content {
+                 height: 98vh; /* 使用幾乎整個頁面高度 */
+            }
+             /* 移除螢幕檢視時的滾動條容器 */
+            #detailModal .printable-content > .flex-1.min-h-0.overflow-y-auto {
                 overflow: visible;
                 flex: 1;
             }
@@ -97,7 +98,7 @@
                 flex-direction: column;
                 height: 100%;
             }
-            /* 讓圖片容器可以伸縮 */
+             /* 讓圖片容器可以伸縮 */
             #detail-image-container {
                 flex: 1; /* 佔用所有剩餘空間 */
                 min-height: 0; /* 允許縮小 */
@@ -111,10 +112,6 @@
                 max-width: 100%;
                 max-height: 100%;
                 object-fit: contain;
-            }
-            /* 隱藏明細視窗中的按鈕 */
-            #detailModal .flex.justify-end {
-                display: none;
             }
         }
         /* --- END: 優化後的列印專用樣式 --- */
@@ -262,9 +259,9 @@
     <div id="notificationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"><div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4"><p id="notificationMessage" class="text-gray-800 text-base mb-4"></p><button id="closeNotificationModal" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">確定</button></div></div>
     <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"><div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4"><p id="confirmationMessage" class="text-gray-800 text-lg mb-6"></p><div class="flex justify-end space-x-4"><button id="confirmCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">取消</button><button id="confirmOk" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">確定</button></div></div></div>
     
-    <!-- Detail and Print Modal -->
-    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div id="printable-content" class="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh]">
+    <!-- Detail and Print Modal (Todo) -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden printable-modal-container">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh] printable-content">
             <h2 class="text-2xl font-bold mb-6 border-b pb-3 flex-shrink-0">項目明細</h2>
             
             <div class="flex-1 min-h-0 overflow-y-auto"> <!-- Scrollable wrapper for on-screen view -->
@@ -284,9 +281,26 @@
                 </div>
             </div>
 
-            <div class="mt-8 pt-4 border-t flex justify-end space-x-4 flex-shrink-0">
+            <div class="mt-8 pt-4 border-t flex justify-end space-x-4 flex-shrink-0 print-hide">
                 <button id="closeDetailModal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">關閉</button>
                 <button id="printDetail" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">列印</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail and Print Modal (Event) -->
+    <div id="eventDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden printable-modal-container">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full mx-4 relative flex flex-col max-h-[90vh] printable-content">
+            <h2 class="text-2xl font-bold mb-6 border-b pb-3 flex-shrink-0">事件明細</h2>
+            <div class="space-y-4 text-gray-700">
+                <p><strong>日期:</strong> <span id="detail-event-date"></span></p>
+                <p><strong>事項:</strong> <span id="detail-event-matter"></span></p>
+                <p><strong>相關人員:</strong> <span id="detail-event-personnel"></span></p>
+                <p><strong>狀態:</strong> <span id="detail-event-status"></span></p>
+            </div>
+            <div class="mt-8 pt-4 border-t flex justify-end space-x-4 flex-shrink-0 print-hide">
+                <button id="closeEventDetailModal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">關閉</button>
+                <button id="printEventDetail" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">列印</button>
             </div>
         </div>
     </div>
@@ -324,6 +338,13 @@
         const paginationContainerEvent = document.getElementById('pagination-container-event');
         const pageInfoEvent = document.getElementById('page-info-event');
         const paginationButtonsEvent = document.getElementById('pagination-buttons-event');
+        const eventDetailModal = document.getElementById('eventDetailModal');
+        const closeEventDetailModal = document.getElementById('closeEventDetailModal');
+        const printEventDetail = document.getElementById('printEventDetail');
+        const detailEventDate = document.getElementById('detail-event-date');
+        const detailEventMatter = document.getElementById('detail-event-matter');
+        const detailEventPersonnel = document.getElementById('detail-event-personnel');
+        const detailEventStatus = document.getElementById('detail-event-status');
 
         // 問題反饋
         const addFeedbackForm = document.getElementById('addFeedbackForm');
@@ -379,7 +400,23 @@
         closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
         imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
         closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
-        printDetail.addEventListener('click', () => window.print());
+        printDetail.addEventListener('click', () => {
+            detailModal.classList.add("printable-modal");
+            window.print();
+            detailModal.classList.remove("printable-modal");
+        });
+        closeEventDetailModal.addEventListener('click', () => eventDetailModal.classList.add('hidden'));
+        printEventDetail.addEventListener('click', () => {
+            // Temporarily hide other modals if they are somehow visible
+            const otherModals = document.querySelectorAll('.fixed.inset-0:not(#eventDetailModal)');
+            otherModals.forEach(m => m.style.setProperty('display', 'none', 'important'));
+            
+            window.print();
+
+            // Restore other modals
+            otherModals.forEach(m => m.style.display = '');
+        });
+
 
         // --- Tab Switching ---
         const switchTab = (activeTab) => {
@@ -587,6 +624,12 @@
                             showNotification(`更新狀態失敗: ${error.message}`);
                         }
                     }
+                } else if (target.classList.contains('view-event-detail')) {
+                    const id = target.dataset.id;
+                    const item = allEventItems.find(i => i.id === id);
+                    if(item) {
+                        populateAndShowEventDetailModal(item);
+                    }
                 }
             });
 
@@ -606,6 +649,7 @@
                             <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                            <button data-id="${item.id}" class="view-event-detail text-blue-600 hover:text-blue-900 mr-4">查看</button>
                             <button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button>
                         </td>`;
                     eventItemsList.appendChild(tr);
@@ -687,6 +731,14 @@
                 detailImageContainer.classList.remove('hidden');
             } else { detailImageContainer.classList.add('hidden'); detailImage.src = ''; }
             detailModal.classList.remove('hidden');
+        };
+
+        const populateAndShowEventDetailModal = (item) => {
+            detailEventDate.textContent = item.date || '-';
+            detailEventMatter.textContent = item.matter || '-';
+            detailEventPersonnel.textContent = item.personnel || '-';
+            detailEventStatus.textContent = item.closed ? '已結案' : '處理中';
+            eventDetailModal.classList.remove('hidden');
         };
 
     </script>
