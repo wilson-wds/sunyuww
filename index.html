@@ -211,14 +211,21 @@
         </div>
         <div id="content-tracking" class="hidden">
             <div class="bg-white p-8 rounded-xl shadow-lg">
-                <form id="addEventForm" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 items-end mb-8 print-hide">
-                    <h2 class="text-2xl font-bold md:col-span-2 border-b pb-3 mb-2">建立新事件</h2>
+                <form id="addEventForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-8 print-hide">
+                    <h2 class="text-2xl font-bold md:col-span-3 border-b pb-3 mb-2">建立新事件</h2>
                     <div><label class="block text-sm font-medium text-gray-700">日期</label><input type="date" id="event-date" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
-                    <div><label class="block text-sm font-medium text-gray-700">選擇上層任務 (可選)</label><select id="event-parentId" class="mt-1 w-full px-3 py-2 border rounded-md"><option value="">無 (設為頂層任務)</option></select></div>
-                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">事項</label><input type="text" id="event-matter" placeholder="事件內容" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
+                    <div><label class="block text-sm font-medium text-gray-700">事項</label><input type="text" id="event-matter" placeholder="事件內容" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
                     <div><label class="block text-sm font-medium text-gray-700">相關人員</label><input type="text" id="event-personnel" placeholder="相關人員" class="mt-1 w-full px-3 py-2 border rounded-md" required></div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700">優先順序</label>
+                        <select id="event-priority" class="mt-1 w-full px-3 py-2 border rounded-md">
+                            <option value="medium">2 (次要)</option>
+                            <option value="high">1 (最優先)</option>
+                            <option value="low">3 (較緩)</option>
+                        </select>
+                    </div>
                     <div class="flex items-center pt-2"><input type="checkbox" id="event-closed" class="h-4 w-4 text-indigo-600 rounded mr-2"><label for="event-closed" class="text-sm font-medium text-gray-700">已結案</label></div>
-                    <div class="md:col-span-2"><button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">新增事件</button></div>
+                    <div class="md:col-span-3"><button type="submit" class="w-full md:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">新增事件</button></div>
                 </form>
 
                 <div class="border-b pb-3 mb-6 print-hide">
@@ -233,6 +240,7 @@
                                     <option value="date-desc">日期 (新到舊)</option>
                                     <option value="date-asc">日期 (舊到新)</option>
                                     <option value="status-pending">狀態 (處理中優先)</option>
+                                    <option value="priority-desc">優先順序 (高到低)</option>
                                 </select>
                             </div>
                             <input type="text" id="event-searchInput" placeholder="查詢事項或人員..." class="w-full sm:w-auto px-3 py-2 border rounded-md">
@@ -242,14 +250,17 @@
                 </div>
                 <!-- Print Header -->
                 <div id="event-print-header" class="hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h1 class="text-2xl font-bold">廠務工作列表</h1>
+                    <div class="flex justify-between items-start mb-4">
+                         <div>
+                            <h1 class="text-2xl font-bold">廠務工作列表</h1>
+                            <p class="text-xs text-gray-600 mt-1">優先順序說明：1 (最優先), 2 (次要), 3 (較緩)</p>
+                        </div>
                         <p id="event-print-date" class="text-sm"></p>
                     </div>
                 </div>
                 <div class="table-container">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
+                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">優先順序</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
                         <tbody id="event-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
@@ -375,7 +386,6 @@
         const eventItemsList = document.getElementById('event-itemsList');
         const eventSearchInput = document.getElementById('event-searchInput');
         const eventSortSelect = document.getElementById('event-sortSelect');
-        const eventParentIdSelect = document.getElementById('event-parentId');
         const printEventListBtn = document.getElementById('printEventListBtn');
         const paginationContainerEvent = document.getElementById('pagination-container-event');
         const pageInfoEvent = document.getElementById('page-info-event');
@@ -541,7 +551,6 @@
                         }
                     });
                     
-                    updateParentTaskDropdown();
                     renderTodoItems();
                     renderEventItems();
                     renderFeedbackItems();
@@ -597,7 +606,7 @@
                             date: tr.querySelector('.edit-date').value,
                         });
                         editingItemId = null;
-                    } catch(error) { showNotification(`儲存失敗: ${error.message}`); }
+                    } catch(error) { showNotification(`儲存失败: ${error.message}`); }
                 }
             });
 
@@ -637,7 +646,7 @@
                         matter: document.getElementById('event-matter').value,
                         personnel: document.getElementById('event-personnel').value, 
                         closed: document.getElementById('event-closed').checked,
-                        parentId: document.getElementById('event-parentId').value || null,
+                        priority: document.getElementById('event-priority').value,
                         createdAt: serverTimestamp()
                     });
                     addEventForm.reset(); 
@@ -651,7 +660,7 @@
                 const tr = target.closest('tr');
 
                 if (target.classList.contains('delete-event')) {
-                    showConfirmation('您確定要刪除這個事件嗎？其子任務將變為頂層任務。', () => deleteDoc(doc(appDataCollectionRef, id)));
+                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
                 } else if (target.classList.contains('toggle-event-closed')) {
                     const item = allEventItems.find(i => i.id === id);
                     if (item) {
@@ -675,7 +684,7 @@
                                 date: tr.querySelector('.edit-event-date').value,
                                 matter: tr.querySelector('.edit-event-matter').value,
                                 personnel: tr.querySelector('.edit-event-personnel').value,
-                                parentId: tr.querySelector('.edit-event-parentId').value || null
+                                priority: tr.querySelector('.edit-event-priority').value
                             };
                             await updateDoc(doc(appDataCollectionRef, id), updatedData);
                             editingEventId = null;
@@ -706,12 +715,28 @@
                 renderEventItems();
             });
 
-            const updateParentTaskDropdown = (currentId = null) => {
-                const options = allEventItems
-                    .filter(item => item.id !== currentId) // Prevent self-selection
-                    .map(item => `<option value="${item.id}">${item.matter}</option>`)
-                    .join('');
-                eventParentIdSelect.innerHTML = `<option value="">無 (設為頂層任務)</option>${options}`;
+            const getPriorityIcon = (priority) => {
+                let colorClass, number;
+                switch(priority) {
+                    case 'high': 
+                        colorClass = 'bg-red-500';
+                        number = '1';
+                        break;
+                    case 'low': 
+                        colorClass = 'bg-green-500';
+                        number = '3';
+                        break;
+                    case 'medium': 
+                    default:
+                        colorClass = 'bg-yellow-500';
+                        number = '2';
+                        break;
+                }
+                return `<div class="flex items-center justify-center">
+                            <div class="relative w-6 h-6 rounded-full flex items-center justify-center ${colorClass}">
+                                <span class="text-xs font-bold text-white">${number}</span>
+                            </div>
+                        </div>`;
             };
             
             const renderEventItems = () => {
@@ -719,61 +744,54 @@
                 const searchTerm = eventSearchInput.value.toLowerCase();
                 
                 let sortedList = [...allEventItems];
+                const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
+
                 switch (currentEventSort) {
                     case 'createdAt-asc': sortedList.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0)); break;
                     case 'date-desc': sortedList.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
                     case 'date-asc': sortedList.sort((a, b) => new Date(a.date) - new Date(b.date)); break;
                     case 'status-pending': sortedList.sort((a, b) => a.closed - b.closed); break;
+                    case 'priority-desc': sortedList.sort((a, b) => (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3)); break;
                     case 'createdAt-desc': default: sortedList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)); break;
                 }
 
-                const filteredList = searchTerm ? sortedList.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm)) : sortedList;
+                const filteredList = sortedList.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
                 
-                const itemsById = new Map(filteredList.map(item => [item.id, item]));
-                const childrenMap = new Map();
-                filteredList.forEach(item => {
-                    if (item.parentId && itemsById.has(item.parentId)) {
-                        const parentChildren = childrenMap.get(item.parentId) || [];
-                        parentChildren.push(item);
-                        childrenMap.set(item.parentId, parentChildren);
-                    }
-                });
-
-                const topLevelItems = filteredList.filter(item => !item.parentId || !itemsById.has(item.parentId));
-                
-                const paginatedTopLevel = isPrinting ? topLevelItems : topLevelItems.slice((currentPageEvent - 1) * itemsPerPage, currentPageEvent * itemsPerPage);
+                const itemsToRender = isPrinting ? filteredList : filteredList.slice((currentPageEvent - 1) * itemsPerPage, currentPageEvent * itemsPerPage);
 
                 if (!isPrinting) {
-                    setupPagination(topLevelItems.length, currentPageEvent, paginationContainerEvent, pageInfoEvent, paginationButtonsEvent, (page) => { currentPageEvent = page; renderEventItems(); });
+                    setupPagination(filteredList.length, currentPageEvent, paginationContainerEvent, pageInfoEvent, paginationButtonsEvent, (page) => { currentPageEvent = page; renderEventItems(); });
                 }
 
                 eventItemsList.innerHTML = ''; 
                 document.getElementById('event-no-results').classList.toggle('hidden', filteredList.length > 0);
                 
-                const renderNodeAndChildren = (item, level) => {
+                itemsToRender.forEach(item => {
                     const tr = document.createElement('tr');
                     const isEditing = item.id === editingEventId && !isPrinting;
-                    
+
                     if (isEditing) {
-                        const parentOptions = allEventItems
-                            .filter(i => i.id !== item.id) // Prevent self-selection
-                            .map(i => `<option value="${i.id}" ${i.id === item.parentId ? 'selected' : ''}>${i.matter}</option>`)
-                            .join('');
                         tr.innerHTML = `
-                            <td class="px-4 py-4"><input type="date" class="edit-input edit-event-date" value="${item.date}"></td>
-                            <td class="px-4 py-4" colspan="2">
-                                <input type="text" class="edit-input edit-event-matter mb-2" value="${item.matter || ''}">
-                                <select class="w-full edit-input edit-event-parentId"><option value="">無 (設為頂層任務)</option>${parentOptions}</select>
+                            <td class="px-4 py-4">
+                                <select class="edit-input edit-event-priority">
+                                    <option value="high" ${item.priority === 'high' ? 'selected' : ''}>1 (最優先)</option>
+                                    <option value="medium" ${item.priority === 'medium' ? 'selected' : ''}>2 (次要)</option>
+                                    <option value="low" ${item.priority === 'low' ? 'selected' : ''}>3 (較緩)</option>
+                                </select>
                             </td>
+                            <td class="px-4 py-4"><input type="date" class="edit-input edit-event-date" value="${item.date}"></td>
+                            <td class="px-4 py-4"><input type="text" class="edit-input edit-event-matter" value="${item.matter || ''}"></td>
+                            <td class="px-4 py-4"><input type="text" class="edit-input edit-event-personnel" value="${item.personnel || ''}"></td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="ml-2 align-middle ${item.closed ? 'text-gray-500' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span></td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                 <button data-id="${item.id}" class="save-event text-green-600 hover:text-green-900 mr-4">儲存</button>
                                 <button data-id="${item.id}" class="cancel-edit-event text-gray-600 hover:text-gray-900">取消</button>
                             </td>`;
                     } else {
-                         tr.innerHTML = `
+                        tr.innerHTML = `
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${getPriorityIcon(item.priority)}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900" style="padding-left: ${level * 1.5 + 1}rem;">${level > 0 ? '<span class="mr-2 text-gray-400">└</span>' : ''}${item.matter}</td>
+                            <td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm">
                                 <input type="checkbox" data-id="${item.id}" class="toggle-event-closed align-middle h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${item.closed ? 'checked' : ''}>
@@ -786,14 +804,7 @@
                             </td>`;
                     }
                     eventItemsList.appendChild(tr);
-
-                    const children = childrenMap.get(item.id);
-                    if (children) {
-                        children.forEach(child => renderNodeAndChildren(child, level + 1));
-                    }
-                };
-                
-                paginatedTopLevel.forEach(item => renderNodeAndChildren(item, 0));
+                });
             };
             eventSearchInput.addEventListener('input', () => { currentPageEvent = 1; renderEventItems(); });
 
