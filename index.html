@@ -230,7 +230,13 @@
 
                 <div class="border-b pb-3 mb-6 print-hide">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <h2 class="text-2xl font-bold">事件追蹤列表</h2>
+                        <div class="flex items-center gap-4">
+                             <h2 class="text-2xl font-bold">事件追蹤列表</h2>
+                             <div class="flex space-x-2 flex-shrink-0">
+                                <button id="event-view-active" class="filter-btn active">進行中</button>
+                                <button id="event-view-archived" class="filter-btn">已封存</button>
+                            </div>
+                        </div>
                         <div class="flex items-center space-x-4">
                              <div>
                                 <label for="event-sortSelect" class="sr-only">排序方式</label>
@@ -268,7 +274,6 @@
                 <div id="event-print-footer" class="hidden mt-12 pt-4 border-t text-center text-gray-500 text-sm">
                     <p>陸續更新中.....</p>
                 </div>
-                 <div id="pagination-container-event" class="mt-6 flex justify-between items-center hidden print-hide"><span id="page-info-event" class="text-sm text-gray-700"></span><div id="pagination-buttons-event" class="flex items-center space-x-1"></div></div>
                 <p id="event-no-results" class="text-center py-8 hidden">找不到事件。</p>
             </div>
         </div>
@@ -387,9 +392,8 @@
         const eventSearchInput = document.getElementById('event-searchInput');
         const eventSortSelect = document.getElementById('event-sortSelect');
         const printEventListBtn = document.getElementById('printEventListBtn');
-        const paginationContainerEvent = document.getElementById('pagination-container-event');
-        const pageInfoEvent = document.getElementById('page-info-event');
-        const paginationButtonsEvent = document.getElementById('pagination-buttons-event');
+        const eventViewActiveBtn = document.getElementById('event-view-active');
+        const eventViewArchivedBtn = document.getElementById('event-view-archived');
         const eventDetailModal = document.getElementById('eventDetailModal');
         const closeEventDetailModal = document.getElementById('closeEventDetailModal');
         const printEventDetail = document.getElementById('printEventDetail');
@@ -437,8 +441,9 @@
         let editingEventId = null;
         let currentFilter = 'all';
         let currentEventSort = 'createdAt-desc';
+        let eventViewMode = 'active'; // 'active' or 'archived'
         let newItemsToHighlight = new Set();
-        let currentPageTodo = 1, currentPageEvent = 1, currentPageFeedback = 1;
+        let currentPageTodo = 1, currentPageFeedback = 1;
         const itemsPerPage = 8;
 
         // --- 日期初始化 ---
@@ -647,6 +652,7 @@
                         personnel: document.getElementById('event-personnel').value, 
                         closed: document.getElementById('event-closed').checked,
                         priority: document.getElementById('event-priority').value,
+                        archived: false, // New field for archiving
                         createdAt: serverTimestamp()
                     });
                     addEventForm.reset(); 
@@ -658,16 +664,18 @@
                 const target = e.target;
                 const id = target.dataset.id;
                 const tr = target.closest('tr');
+                if (!id) return;
+                const docRef = doc(appDataCollectionRef, id);
 
                 if (target.classList.contains('delete-event')) {
-                    showConfirmation('您確定要刪除這個事件嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
+                    showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
+                } else if (target.classList.contains('archive-event')) {
+                    await updateDoc(docRef, { archived: true });
+                } else if (target.classList.contains('unarchive-event')) {
+                    await updateDoc(docRef, { archived: false });
                 } else if (target.classList.contains('toggle-event-closed')) {
                     const item = allEventItems.find(i => i.id === id);
-                    if (item) {
-                        try {
-                            await updateDoc(doc(appDataCollectionRef, id), { closed: !item.closed });
-                        } catch (error) { showNotification(`更新狀態失敗: ${error.message}`); }
-                    }
+                    if (item) await updateDoc(docRef, { closed: !item.closed });
                 } else if (target.classList.contains('view-event-detail')) {
                     const item = allEventItems.find(i => i.id === id);
                     if(item) populateAndShowEventDetailModal(item);
@@ -686,7 +694,7 @@
                                 personnel: tr.querySelector('.edit-event-personnel').value,
                                 priority: tr.querySelector('.edit-event-priority').value
                             };
-                            await updateDoc(doc(appDataCollectionRef, id), updatedData);
+                            await updateDoc(docRef, updatedData);
                             editingEventId = null;
                         } catch (error) {
                             showNotification(`儲存失敗: ${error.message}`);
@@ -709,9 +717,17 @@
                 window.print();
             });
             
+            const setEventViewMode = (mode) => {
+                eventViewMode = mode;
+                eventViewActiveBtn.classList.toggle('active', mode === 'active');
+                eventViewArchivedBtn.classList.toggle('active', mode === 'archived');
+                renderEventItems();
+            };
+
+            eventViewActiveBtn.addEventListener('click', () => setEventViewMode('active'));
+            eventViewArchivedBtn.addEventListener('click', () => setEventViewMode('archived'));
             eventSortSelect.addEventListener('change', (e) => {
                 currentEventSort = e.target.value;
-                currentPageEvent = 1;
                 renderEventItems();
             });
 
@@ -743,7 +759,12 @@
                 const isPrinting = document.body.classList.contains('is-printing-list');
                 const searchTerm = eventSearchInput.value.toLowerCase();
                 
-                let sortedList = [...allEventItems];
+                const listToDisplay = allEventItems.filter(item => {
+                    const isArchived = item.archived === true;
+                    return eventViewMode === 'archived' ? isArchived : !isArchived;
+                });
+                
+                let sortedList = [...listToDisplay];
                 const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
 
                 const sortFunctions = {
@@ -758,26 +779,17 @@
                         if (priorityA !== priorityB) {
                             return priorityA - priorityB;
                         }
-                        // If priorities are the same, sort by creation date (newest first)
                         return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
                     }
                 };
-
                 sortedList.sort(sortFunctions[currentEventSort] || sortFunctions['createdAt-desc']);
-
 
                 const filteredList = sortedList.filter(item => item.matter?.toLowerCase().includes(searchTerm) || item.personnel?.toLowerCase().includes(searchTerm));
                 
-                const itemsToRender = isPrinting ? filteredList : filteredList.slice((currentPageEvent - 1) * itemsPerPage, currentPageEvent * itemsPerPage);
-
-                if (!isPrinting) {
-                    setupPagination(filteredList.length, currentPageEvent, paginationContainerEvent, pageInfoEvent, paginationButtonsEvent, (page) => { currentPageEvent = page; renderEventItems(); });
-                }
-
                 eventItemsList.innerHTML = ''; 
                 document.getElementById('event-no-results').classList.toggle('hidden', filteredList.length > 0);
                 
-                itemsToRender.forEach(item => {
+                filteredList.forEach(item => {
                     const tr = document.createElement('tr');
                     const isEditing = item.id === editingEventId && !isPrinting;
 
@@ -799,6 +811,10 @@
                                 <button data-id="${item.id}" class="cancel-edit-event text-gray-600 hover:text-gray-900">取消</button>
                             </td>`;
                     } else {
+                        const archiveButton = eventViewMode === 'active' 
+                            ? `<button data-id="${item.id}" class="archive-event text-gray-600 hover:text-gray-900 mr-4">封存</button>`
+                            : `<button data-id="${item.id}" class="unarchive-event text-green-600 hover:text-green-900 mr-4">取消封存</button>`;
+
                         tr.innerHTML = `
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${getPriorityIcon(item.priority)}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
@@ -809,7 +825,7 @@
                                 <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                <button data-id="${item.id}" class="view-event-detail text-blue-600 hover:text-blue-900 mr-4">查看</button>
+                                ${archiveButton}
                                 <button data-id="${item.id}" class="edit-event text-indigo-600 hover:text-indigo-900 mr-4">編輯</button>
                                 <button data-id="${item.id}" class="delete-event text-red-600 hover:text-red-900">刪除</button>
                             </td>`;
@@ -817,7 +833,7 @@
                     eventItemsList.appendChild(tr);
                 });
             };
-            eventSearchInput.addEventListener('input', () => { currentPageEvent = 1; renderEventItems(); });
+            eventSearchInput.addEventListener('input', renderEventItems);
 
             // =================================================================
             // --- 問題反饋 (Feedback) Section ---
