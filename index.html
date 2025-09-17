@@ -376,421 +376,166 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- DOM 元素 ---
-        const mainContent = document.getElementById('main-content');
-        const tabTodo = document.getElementById('tab-todo');
-        const tabTracking = document.getElementById('tab-tracking');
-        const tabFeedback = document.getElementById('tab-feedback');
-        const contentTodo = document.getElementById('content-todo');
-        const contentTracking = document.getElementById('content-tracking');
-        const contentFeedback = document.getElementById('content-feedback');
         
-        // 待辦事項
-        const addItemForm = document.getElementById('addItemForm');
-        const todoItemsList = document.getElementById('todo-itemsList');
-        const todoSearchInput = document.getElementById('todo-searchInput');
-        const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
-        const filterAllBtn = document.getElementById('filter-all');
-        const filterPendingBtn = document.getElementById('filter-pending');
-        const filterCompletedBtn = document.getElementById('filter-completed');
-        const paginationContainerTodo = document.getElementById('pagination-container-todo');
-        const pageInfoTodo = document.getElementById('page-info-todo');
-        const paginationButtonsTodo = document.getElementById('pagination-buttons-todo');
-
-        // 事件追蹤
-        const addEventForm = document.getElementById('addEventForm');
-        const eventItemsList = document.getElementById('event-itemsList');
-        const eventSearchInput = document.getElementById('event-searchInput');
-        const eventSortSelect = document.getElementById('event-sortSelect');
-        const printEventListBtn = document.getElementById('printEventListBtn');
-        const eventViewActiveBtn = document.getElementById('event-view-active');
-        const eventViewArchivedBtn = document.getElementById('event-view-archived');
-        const eventDetailModal = document.getElementById('eventDetailModal');
-        const closeEventDetailModal = document.getElementById('closeEventDetailModal');
-        const printEventDetail = document.getElementById('printEventDetail');
-        const detailEventDate = document.getElementById('detail-event-date');
-        const detailEventMatter = document.getElementById('detail-event-matter');
-        const detailEventPersonnel = document.getElementById('detail-event-personnel');
-        const detailEventStatus = document.getElementById('detail-event-status');
-
-        // 問題反饋
-        const addFeedbackForm = document.getElementById('addFeedbackForm');
-        const feedbackItemsList = document.getElementById('feedback-itemsList');
-        const feedbackFilterType = document.getElementById('feedback-filterType');
-        const paginationContainerFeedback = document.getElementById('pagination-container-feedback');
-        const pageInfoFeedback = document.getElementById('page-info-feedback');
-        const paginationButtonsFeedback = document.getElementById('pagination-buttons-feedback');
-
-        // 通用
-        const authStatus = document.getElementById('auth-status');
-        const imageModal = document.getElementById('imageModal');
-        const modalImage = document.getElementById('modalImage');
-        const closeModal = document.getElementById('closeModal');
-        const notificationModal = document.getElementById('notificationModal');
-        const notificationMessage = document.getElementById('notificationMessage');
-        const closeNotificationModal = document.getElementById('closeNotificationModal');
-        const confirmationModal = document.getElementById('confirmationModal');
-        const confirmationMessage = document.getElementById('confirmationMessage');
-        const confirmCancel = document.getElementById('confirmCancel');
-        const confirmOk = document.getElementById('confirmOk');
-        const detailModal = document.getElementById('detailModal');
-        const closeDetailModal = document.getElementById('closeDetailModal');
-        const printDetail = document.getElementById('printDetail');
-        const detailProductionId = document.getElementById('detail-productionId');
-        const detailAssemblyId = document.getElementById('detail-assemblyId');
-        const detailPartNumber = document.getElementById('detail-partNumber');
-        const detailDate = document.getElementById('detail-date');
-        const detailContentText = document.getElementById('detail-content-text');
-        const detailImageContainer = document.getElementById('detail-image-container');
-        const detailImage = document.getElementById('detail-image');
-
-        // --- 狀態變數 ---
-        let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
-        let unsubscribeAllData = null;
-        let confirmCallback = null;
-        let editingItemId = null;
-        let editingEventId = null;
-        let currentFilter = 'all';
-        let currentEventSort = 'createdAt-desc';
-        let eventViewMode = 'active'; // 'active' or 'archived'
-        let newItemsToHighlight = new Set();
-        let currentPageTodo = 1, currentPageFeedback = 1;
-        const itemsPerPage = 8;
-        let db, auth;
-        let appDataCollectionRef;
-
-
-        // --- 日期初始化 ---
-        document.getElementById('todo-date').valueAsDate = new Date();
-        document.getElementById('event-date').valueAsDate = new Date();
-
-        // --- Modal 輔助函數 ---
-        const showNotification = (message) => { notificationMessage.textContent = message; notificationModal.classList.remove('hidden'); };
-        const showConfirmation = (message, callback) => { confirmationMessage.textContent = message; confirmCallback = callback; confirmationModal.classList.remove('hidden'); };
-        closeNotificationModal.addEventListener('click', () => notificationModal.classList.add('hidden'));
-        confirmCancel.addEventListener('click', () => { confirmationModal.classList.add('hidden'); confirmCallback = null; });
-        confirmOk.addEventListener('click', () => { confirmationModal.classList.add('hidden'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
-        closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
-        imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
-        closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
-        printDetail.addEventListener('click', () => {
-            detailModal.classList.add("printable-modal");
-            window.print();
-            detailModal.classList.remove("printable-modal");
-        });
-        closeEventDetailModal.addEventListener('click', () => eventDetailModal.classList.add('hidden'));
-        printEventDetail.addEventListener('click', () => {
-            window.print();
-        });
-
-        // --- Global Print Handlers ---
-        window.addEventListener('afterprint', () => {
-            document.body.classList.remove('is-printing-list');
-            renderEventItems();
-        });
-
-
-        // --- Tab Switching ---
-        const switchTab = (activeTab) => {
-            const tabs = { todo: tabTodo, tracking: tabTracking, feedback: tabFeedback };
-            const contents = { todo: contentTodo, tracking: contentTracking, feedback: contentFeedback };
-            const activeClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600';
-            const inactiveClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+        // This function will run once the entire DOM is loaded and ready.
+        window.addEventListener('DOMContentLoaded', () => {
             
-            for (const key in tabs) {
-                if (key === activeTab) {
-                    tabs[key].className = activeClasses;
-                    tabs[key].setAttribute('aria-current', 'page');
-                    contents[key].classList.remove('hidden');
-                } else {
-                    tabs[key].className = inactiveClasses;
-                    tabs[key].removeAttribute('aria-current');
-                    contents[key].classList.add('hidden');
-                }
-            }
-        };
-
-        // --- Firebase 設定 ---
-        const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
-        const appId = "sunyu-check";
-
-
-        // --- Firebase 初始化 ---
-        if (!firebaseConfig || !firebaseConfig.apiKey) {
-            authStatus.textContent = "錯誤：找不到 Firebase 設定。";
-        } else {
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
+            // --- DOM 元素 ---
+            const mainContent = document.getElementById('main-content');
+            const tabTodo = document.getElementById('tab-todo');
+            const tabTracking = document.getElementById('tab-tracking');
+            const tabFeedback = document.getElementById('tab-feedback');
+            const contentTodo = document.getElementById('content-todo');
+            const contentTracking = document.getElementById('content-tracking');
+            const contentFeedback = document.getElementById('content-feedback');
             
-            appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
+            // 待辦事項
+            const addItemForm = document.getElementById('addItemForm');
+            const todoItemsList = document.getElementById('todo-itemsList');
+            const todoSearchInput = document.getElementById('todo-searchInput');
+            const todoSubmitButton = addItemForm.querySelector('button[type="submit"]');
+            const filterAllBtn = document.getElementById('filter-all');
+            const filterPendingBtn = document.getElementById('filter-pending');
+            const filterCompletedBtn = document.getElementById('filter-completed');
+            const paginationContainerTodo = document.getElementById('pagination-container-todo');
+            const pageInfoTodo = document.getElementById('page-info-todo');
+            const paginationButtonsTodo = document.getElementById('pagination-buttons-todo');
 
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    authStatus.textContent = `已連線 | 公開共享模式`;
-                    document.querySelector('#addEventForm button[type="submit"]').disabled = false;
-                    document.querySelector('#addFeedbackForm button[type="submit"]').disabled = false;
-                    todoSubmitButton.disabled = false;
-                    mainContent.classList.remove('hidden');
-                    listenForAllData();
-                } else {
-                    authStatus.textContent = '正在驗證身份...';
-                    try {
-                        await signInAnonymously(auth);
-                    } catch (error) {
-                        console.error("匿名登入失敗:", error);
-                        authStatus.textContent = `錯誤：無法連接。 ${error.message}`;
-                    }
-                }
+            // 事件追蹤
+            const addEventForm = document.getElementById('addEventForm');
+            const eventItemsList = document.getElementById('event-itemsList');
+            const eventSearchInput = document.getElementById('event-searchInput');
+            const eventSortSelect = document.getElementById('event-sortSelect');
+            const printEventListBtn = document.getElementById('printEventListBtn');
+            const eventViewActiveBtn = document.getElementById('event-view-active');
+            const eventViewArchivedBtn = document.getElementById('event-view-archived');
+            const eventDetailModal = document.getElementById('eventDetailModal');
+            const closeEventDetailModal = document.getElementById('closeEventDetailModal');
+            const printEventDetail = document.getElementById('printEventDetail');
+            const detailEventDate = document.getElementById('detail-event-date');
+            const detailEventMatter = document.getElementById('detail-event-matter');
+            const detailEventPersonnel = document.getElementById('detail-event-personnel');
+            const detailEventStatus = document.getElementById('detail-event-status');
+
+            // 問題反饋
+            const addFeedbackForm = document.getElementById('addFeedbackForm');
+            const feedbackItemsList = document.getElementById('feedback-itemsList');
+            const feedbackFilterType = document.getElementById('feedback-filterType');
+            const paginationContainerFeedback = document.getElementById('pagination-container-feedback');
+            const pageInfoFeedback = document.getElementById('page-info-feedback');
+            const paginationButtonsFeedback = document.getElementById('pagination-buttons-feedback');
+
+            // 通用
+            const authStatus = document.getElementById('auth-status');
+            const imageModal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const closeModal = document.getElementById('closeModal');
+            const notificationModal = document.getElementById('notificationModal');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const closeNotificationModal = document.getElementById('closeNotificationModal');
+            const confirmationModal = document.getElementById('confirmationModal');
+            const confirmationMessage = document.getElementById('confirmationMessage');
+            const confirmCancel = document.getElementById('confirmCancel');
+            const confirmOk = document.getElementById('confirmOk');
+            const detailModal = document.getElementById('detailModal');
+            const closeDetailModal = document.getElementById('closeDetailModal');
+            const printDetail = document.getElementById('printDetail');
+            const detailProductionId = document.getElementById('detail-productionId');
+            const detailAssemblyId = document.getElementById('detail-assemblyId');
+            const detailPartNumber = document.getElementById('detail-partNumber');
+            const detailDate = document.getElementById('detail-date');
+            const detailContentText = document.getElementById('detail-content-text');
+            const detailImageContainer = document.getElementById('detail-image-container');
+            const detailImage = document.getElementById('detail-image');
+
+            // --- 狀態變數 ---
+            let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
+            let unsubscribeAllData = null;
+            let confirmCallback = null;
+            let editingItemId = null;
+            let editingEventId = null;
+            let currentFilter = 'all';
+            let currentEventSort = 'createdAt-desc';
+            let eventViewMode = 'active'; // 'active' or 'archived'
+            let newItemsToHighlight = new Set();
+            let currentPageTodo = 1, currentPageFeedback = 1;
+            const itemsPerPage = 8;
+            let db, auth;
+            let appDataCollectionRef;
+
+
+            // --- 日期初始化 ---
+            document.getElementById('todo-date').valueAsDate = new Date();
+            document.getElementById('event-date').valueAsDate = new Date();
+
+            // --- Modal 輔助函數 ---
+            const showNotification = (message) => { notificationMessage.textContent = message; notificationModal.classList.remove('hidden'); };
+            const showConfirmation = (message, callback) => { confirmationMessage.textContent = message; confirmCallback = callback; confirmationModal.classList.remove('hidden'); };
+            
+
+            // --- Global Print Handlers ---
+            window.addEventListener('afterprint', () => {
+                document.body.classList.remove('is-printing-list');
+                renderEventItems();
             });
 
-            // =================================================================
-            // --- Unified Data Listener ---
-            // =================================================================
-            const listenForAllData = () => {
-                if (unsubscribeAllData) unsubscribeAllData();
-                 if (!appDataCollectionRef) return;
 
-                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
-                    allTodoItems = [];
-                    allEventItems = [];
-                    allFeedbackItems = [];
-
-                    snapshot.docs.forEach(doc => {
-                        const data = { id: doc.id, ...doc.data() };
-                        switch(data.type) {
-                            case 'event':
-                                allEventItems.push(data);
-                                break;
-                            case 'feedback':
-                                allFeedbackItems.push(data);
-                                break;
-                            case 'todo':
-                            default:
-                                allTodoItems.push(data);
-                                break;
-                        }
-                    });
-                    
-                    renderTodoItems();
-                    renderEventItems();
-                    renderFeedbackItems();
-                });
-            };
-            
-            // Function to set up all event listeners for the main content
-            const setupEventListeners = () => {
-                tabTodo.addEventListener('click', () => switchTab('todo'));
-                tabTracking.addEventListener('click', () => switchTab('tracking'));
-                tabFeedback.addEventListener('click', () => switchTab('feedback'));
-
-                // =================================================================
-                // --- 待修改明細 (Todo) Section ---
-                // =================================================================
-                addItemForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    if (!appDataCollectionRef) return;
-                    const imageFile = document.getElementById('todo-imageUpload').files[0];
-                    if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
-                    const reader = new FileReader();
-                    reader.onloadend = async () => {
-                        try {
-                            const docRef = await addDoc(appDataCollectionRef, {
-                                type: 'todo',
-                                productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
-                                partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
-                                date: document.getElementById('todo-date').value, image: reader.result || null,
-                                completed: false, createdAt: serverTimestamp()
-                            });
-                            newItemsToHighlight.add(docRef.id);
-                            addItemForm.reset();
-                            document.getElementById('todo-date').valueAsDate = new Date();
-                        } catch (error) { showNotification(`新增待辦失敗: ${error.message}`); }
-                    };
-                    if (imageFile) reader.readAsDataURL(imageFile); else reader.onloadend();
-                });
-
-                document.getElementById('list-container-todo').addEventListener('click', async (e) => {
-                    const target = e.target; const tr = target.closest('tr'); if (!tr) return;
-                    const id = tr.dataset.id; 
-                    if (!appDataCollectionRef) return;
-                    const docRef = doc(appDataCollectionRef, id);
-                    if (target.classList.contains('toggle-complete')) {
-                        const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
-                    } else if (target.classList.contains('delete-item')) {
-                        showConfirmation('您確定要刪除這個項目嗎？', () => deleteDoc(docRef));
-                    } else if (target.classList.contains('view-image')) {
-                        const item = allTodoItems.find(i => i.id === id); if (item && item.image) { modalImage.src = item.image; imageModal.classList.remove('hidden'); }
-                    } else if (target.classList.contains('view-detail')) { 
-                        const item = allTodoItems.find(i => i.id === id); if (item) { populateAndShowDetailModal(item); }
-                    } else if (target.classList.contains('edit-item')) {
-                        editingItemId = id; renderTodoItems();
-                    } else if (target.classList.contains('cancel-edit')) {
-                        editingItemId = null; renderTodoItems();
-                    } else if (target.classList.contains('save-item')) {
-                        try {
-                            await updateDoc(docRef, {
-                                productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
-                                partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
-                                date: tr.querySelector('.edit-date').value,
-                            });
-                            editingItemId = null;
-                        } catch(error) { showNotification(`儲存失败: ${error.message}`); }
-                    }
-                });
+            // --- Tab Switching ---
+            const switchTab = (activeTab) => {
+                const tabs = { todo: tabTodo, tracking: tabTracking, feedback: tabFeedback };
+                const contents = { todo: contentTodo, tracking: contentTracking, feedback: contentFeedback };
+                const activeClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600';
+                const inactiveClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
                 
-                filterAllBtn.addEventListener('click', () => setFilter('all')); 
-                filterPendingBtn.addEventListener('click', () => setFilter('pending')); 
-                filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
-                todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
-
-                // =================================================================
-                // --- 事件追蹤 (Event) Section ---
-                // =================================================================
-                addEventForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    if (!appDataCollectionRef) return;
-                    try {
-                        await addDoc(appDataCollectionRef, {
-                            type: 'event',
-                            date: document.getElementById('event-date').value, 
-                            matter: document.getElementById('event-matter').value,
-                            personnel: document.getElementById('event-personnel').value, 
-                            closed: document.getElementById('event-closed').checked,
-                            priority: document.getElementById('event-priority').value,
-                            archived: false, // New field for archiving
-                            createdAt: serverTimestamp()
-                        });
-                        addEventForm.reset(); 
-                        document.getElementById('event-date').valueAsDate = new Date();
-                    } catch (error) { showNotification(`新增事件失敗: ${error.message}`); }
-                });
-
-                contentTracking.addEventListener('click', async (e) => {
-                    const target = e.target;
-                    const id = target.dataset.id;
-                    const tr = target.closest('tr');
-                    if (!id || !appDataCollectionRef) return;
-                    const docRef = doc(appDataCollectionRef, id);
-
-                    if (target.classList.contains('delete-event')) {
-                        showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
-                    } else if (target.classList.contains('archive-event')) {
-                        await updateDoc(docRef, { archived: true });
-                    } else if (target.classList.contains('unarchive-event')) {
-                        await updateDoc(docRef, { archived: false });
-                    } else if (target.classList.contains('toggle-event-closed')) {
-                        const item = allEventItems.find(i => i.id === id);
-                        if (item) await updateDoc(docRef, { closed: !item.closed });
-                    } else if (target.classList.contains('view-event-detail')) {
-                        const item = allEventItems.find(i => i.id === id);
-                        if(item) populateAndShowEventDetailModal(item);
-                    } else if (target.classList.contains('edit-event')) {
-                        editingEventId = id;
-                        renderEventItems();
-                    } else if (target.classList.contains('cancel-edit-event')) {
-                        editingEventId = null;
-                        renderEventItems();
-                    } else if (target.classList.contains('save-event')) {
-                         if (tr) {
-                            try {
-                                const updatedData = {
-                                    date: tr.querySelector('.edit-event-date').value,
-                                    matter: tr.querySelector('.edit-event-matter').value,
-                                    personnel: tr.querySelector('.edit-event-personnel').value,
-                                    priority: tr.querySelector('.edit-event-priority').value
-                                };
-                                await updateDoc(docRef, updatedData);
-                                editingEventId = null;
-                            } catch (error) {
-                                showNotification(`儲存失敗: ${error.message}`);
-                                editingEventId = null;
-                                renderEventItems();
-                            }
-                        }
-                    }
-                });
-
-                printEventListBtn.addEventListener('click', () => {
-                    const today = new Date();
-                    const yyyy = today.getFullYear();
-                    const mm = String(today.getMonth() + 1).padStart(2, '0');
-                    const dd = String(today.getDate()).padStart(2, '0');
-                    document.getElementById('event-print-date').textContent = `日期：${yyyy}/${mm}/${dd}`;
-                    
-                    document.body.classList.add('is-printing-list');
-                    renderEventItems();
-                    window.print();
-                });
-                
-                eventViewActiveBtn.addEventListener('click', () => setEventViewMode('active'));
-                eventViewArchivedBtn.addEventListener('click', () => setEventViewMode('archived'));
-                eventSortSelect.addEventListener('change', (e) => {
-                    currentEventSort = e.target.value;
-                    renderEventItems();
-                });
-                eventSearchInput.addEventListener('input', renderEventItems);
-
-
-                // =================================================================
-                // --- 問題反饋 (Feedback) Section ---
-                // =================================================================
-                 addFeedbackForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    if (!appDataCollectionRef) return;
-                    const solution = document.getElementById('feedback-solution').value;
-                    const status = document.getElementById('feedback-status').value;
-                    if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
-                    try {
-                        await addDoc(appDataCollectionRef, {
-                            type: 'feedback',
-                            feedbackType: document.getElementById('feedback-type').value,
-                            problem: document.getElementById('feedback-problem').value,
-                            solution: solution, status: status, createdAt: serverTimestamp()
-                        });
-                        addFeedbackForm.reset();
-                    } catch (error) { showNotification(`新增反饋失敗: ${error.message}`); }
-                });
-
-                contentFeedback.addEventListener('click', async (e) => {
-                    if (e.target.classList.contains('delete-feedback')) {
-                        if (!appDataCollectionRef) return;
-                        const id = e.target.dataset.id;
-                        showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
-                    }
-                });
-
-                feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
-            }
-            
-            // Call setup function once
-            setupEventListeners();
-
-
-            const renderTodoItems = () => {
-                const searchTerm = todoSearchInput.value.toLowerCase();
-                let filteredList = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(searchTerm) || item.assemblyId?.toLowerCase().includes(searchTerm) || item.partNumber?.toLowerCase().includes(searchTerm));
-                if (currentFilter === 'pending') { filteredList = filteredList.filter(item => !item.completed); } else if (currentFilter === 'completed') { filteredList = filteredList.filter(item => item.completed); }
-                const paginatedItems = filteredList.slice((currentPageTodo - 1) * itemsPerPage, currentPageTodo * itemsPerPage);
-                todoItemsList.innerHTML = ''; document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
-                paginatedItems.forEach(item => {
-                    const isEditing = item.id === editingItemId; const tr = document.createElement('tr'); tr.dataset.id = item.id; if (item.completed) tr.classList.add('completed');
-                    if (newItemsToHighlight.has(item.id)) { tr.classList.add('new-item-highlight'); setTimeout(() => tr.classList.remove('new-item-highlight'), 1500); newItemsToHighlight.delete(item.id); }
-                    if (isEditing) {
-                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td><td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td><td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="save-item text-green-600 hover:text-green-900">儲存</button><button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button></td>`;
+                for (const key in tabs) {
+                    if (key === activeTab) {
+                        tabs[key].className = activeClasses;
+                        tabs[key].setAttribute('aria-current', 'page');
+                        contents[key].classList.remove('hidden');
                     } else {
-                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td><td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<img src="${item.image}" alt="縮圖" class="view-image h-10 w-10 object-cover rounded cursor-pointer">` : '無'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="view-detail text-blue-600 hover:text-blue-900">查看</button><button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button><button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button></td>`;
+                        tabs[key].className = inactiveClasses;
+                        tabs[key].removeAttribute('aria-current');
+                        contents[key].classList.add('hidden');
                     }
-                    todoItemsList.appendChild(tr);
-                });
-                setupPagination(filteredList.length, currentPageTodo, paginationContainerTodo, pageInfoTodo, paginationButtonsTodo, (page) => { currentPageTodo = page; renderTodoItems(); });
+                }
             };
-            
-            const setFilter = (filter) => { currentPageTodo = 1; currentFilter = filter; renderTodoItems(); updateFilterButtons(); };
-            const updateFilterButtons = () => { filterAllBtn.classList.toggle('active', currentFilter === 'all'); filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); filterCompletedBtn.classList.toggle('active', currentFilter === 'completed'); };
-            
 
+            // --- Firebase 設定 ---
+            const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
+            const appId = "sunyu-check";
+
+
+            // --- Firebase 初始化 ---
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                authStatus.textContent = "錯誤：找不到 Firebase 設定。";
+            } else {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        authStatus.textContent = `已連線 | 公開共享模式`;
+                        document.querySelector('#addEventForm button[type="submit"]').disabled = false;
+                        document.querySelector('#addFeedbackForm button[type="submit"]').disabled = false;
+                        todoSubmitButton.disabled = false;
+                        
+                        listenForAllData();
+                    } else {
+                        authStatus.textContent = '正在驗證身份...';
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("匿名登入失敗:", error);
+                            authStatus.textContent = `錯誤：無法連接。 ${error.message}`;
+                        }
+                    }
+                });
+            }
+
+            // --- Render and Helper Functions (Defined before they are called) ---
             const getPriorityIcon = (priority) => {
                 let colorClass, number;
                 switch(priority) {
@@ -814,6 +559,68 @@
                             </div>
                         </div>`;
             };
+
+            const setupPagination = (totalItems, currentPage, container, infoEl, buttonsEl, onPageClick) => {
+                buttonsEl.innerHTML = '';
+                const pageCount = Math.ceil(totalItems / itemsPerPage);
+                if (pageCount <= 1) { return container.classList.add('hidden'); }
+                container.classList.remove('hidden');
+                const startItem = (currentPage - 1) * itemsPerPage + 1;
+                const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+                infoEl.textContent = `顯示 ${totalItems} 個項目中的 ${startItem}-${endItem} 項`;
+                const createBtn = (text, onClick, enabled = true) => {
+                    const btn = document.createElement('button');
+                    btn.textContent = text;
+                    btn.disabled = !enabled;
+                    btn.className = `px-3 py-1 text-sm font-medium border rounded-md ${!enabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} ${text === currentPage ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-700 bg-white border-gray-300'}`;
+                    btn.addEventListener('click', onClick);
+                    return btn;
+                };
+                buttonsEl.appendChild(createBtn('«', () => onPageClick(currentPage - 1), currentPage > 1));
+                for (let i = 1; i <= pageCount; i++) { buttonsEl.appendChild(createBtn(i, () => onPageClick(i), true)); }
+                buttonsEl.appendChild(createBtn('»', () => onPageClick(currentPage + 1), currentPage < pageCount));
+            };
+
+            const populateAndShowDetailModal = (item) => {
+                detailProductionId.textContent = item.productionId || '-'; detailAssemblyId.textContent = item.assemblyId || '-';
+                detailPartNumber.textContent = item.partNumber || '-'; detailDate.textContent = item.date || '-';
+                detailContentText.textContent = item.content || '-';
+                if (item.image) {
+                    detailImage.src = item.image; detailImage.alt = `${item.partNumber} 的圖片`;
+                    detailImageContainer.classList.remove('hidden');
+                } else { detailImageContainer.classList.add('hidden'); detailImage.src = ''; }
+                detailModal.classList.remove('hidden');
+            };
+
+            const populateAndShowEventDetailModal = (item) => {
+                detailEventDate.textContent = item.date || '-';
+                detailEventMatter.textContent = item.matter || '-';
+                detailEventPersonnel.textContent = item.personnel || '-';
+                detailEventStatus.textContent = item.closed ? '已結案' : '處理中';
+                eventDetailModal.classList.remove('hidden');
+            };
+
+            const renderTodoItems = () => {
+                const searchTerm = todoSearchInput.value.toLowerCase();
+                let filteredList = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(searchTerm) || item.assemblyId?.toLowerCase().includes(searchTerm) || item.partNumber?.toLowerCase().includes(searchTerm));
+                if (currentFilter === 'pending') { filteredList = filteredList.filter(item => !item.completed); } else if (currentFilter === 'completed') { filteredList = filteredList.filter(item => item.completed); }
+                const paginatedItems = filteredList.slice((currentPageTodo - 1) * itemsPerPage, currentPageTodo * itemsPerPage);
+                todoItemsList.innerHTML = ''; document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
+                paginatedItems.forEach(item => {
+                    const isEditing = item.id === editingItemId; const tr = document.createElement('tr'); tr.dataset.id = item.id; if (item.completed) tr.classList.add('completed');
+                    if (newItemsToHighlight.has(item.id)) { tr.classList.add('new-item-highlight'); setTimeout(() => tr.classList.remove('new-item-highlight'), 1500); newItemsToHighlight.delete(item.id); }
+                    if (isEditing) {
+                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td><td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td><td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="save-item text-green-600 hover:text-green-900">儲存</button><button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button></td>`;
+                    } else {
+                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td><td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<img src="${item.image}" alt="縮圖" class="view-image h-10 w-10 object-cover rounded cursor-pointer">` : '無'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="view-detail text-blue-600 hover:text-blue-900">查看</button><button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button><button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button></td>`;
+                    }
+                    todoItemsList.appendChild(tr);
+                });
+                setupPagination(filteredList.length, currentPageTodo, paginationContainerTodo, pageInfoTodo, paginationButtonsTodo, (page) => { currentPageTodo = page; renderTodoItems(); });
+            };
+            
+            const setFilter = (filter) => { currentPageTodo = 1; currentFilter = filter; renderTodoItems(); updateFilterButtons(); };
+            const updateFilterButtons = () => { filterAllBtn.classList.toggle('active', currentFilter === 'all'); filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); filterCompletedBtn.classList.toggle('active', currentFilter === 'completed'); };
             
             const renderEventItems = () => {
                 const isPrinting = document.body.classList.contains('is-printing-list');
@@ -896,6 +703,13 @@
                     eventItemsList.appendChild(tr);
                 });
             };
+
+            const setEventViewMode = (mode) => {
+                eventViewMode = mode;
+                eventViewActiveBtn.classList.toggle('active', mode === 'active');
+                eventViewArchivedBtn.classList.toggle('active', mode === 'archived');
+                renderEventItems();
+            };
             
 
             const renderFeedbackItems = () => {
@@ -910,51 +724,237 @@
                 });
                 setupPagination(filteredList.length, currentPageFeedback, paginationContainerFeedback, pageInfoFeedback, paginationButtonsFeedback, (page) => { currentPageFeedback = page; renderFeedbackItems(); });
             };
-            
-        }
-        
-        // --- 通用分頁控制 ---
-        const setupPagination = (totalItems, currentPage, container, infoEl, buttonsEl, onPageClick) => {
-            buttonsEl.innerHTML = '';
-            const pageCount = Math.ceil(totalItems / itemsPerPage);
-            if (pageCount <= 1) { return container.classList.add('hidden'); }
-            container.classList.remove('hidden');
-            const startItem = (currentPage - 1) * itemsPerPage + 1;
-            const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-            infoEl.textContent = `顯示 ${totalItems} 個項目中的 ${startItem}-${endItem} 項`;
-            const createBtn = (text, onClick, enabled = true) => {
-                const btn = document.createElement('button');
-                btn.textContent = text;
-                btn.disabled = !enabled;
-                btn.className = `px-3 py-1 text-sm font-medium border rounded-md ${!enabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} ${text === currentPage ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-700 bg-white border-gray-300'}`;
-                btn.addEventListener('click', onClick);
-                return btn;
+            // =================================================================
+
+            // =================================================================
+            // --- Unified Data Listener ---
+            // =================================================================
+            const listenForAllData = () => {
+                if (unsubscribeAllData) unsubscribeAllData();
+                 if (!appDataCollectionRef) return;
+
+                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
+                    allTodoItems = [];
+                    allEventItems = [];
+                    allFeedbackItems = [];
+
+                    snapshot.docs.forEach(doc => {
+                        const data = { id: doc.id, ...doc.data() };
+                        switch(data.type) {
+                            case 'event':
+                                allEventItems.push(data);
+                                break;
+                            case 'feedback':
+                                allFeedbackItems.push(data);
+                                break;
+                            case 'todo':
+                            default:
+                                allTodoItems.push(data);
+                                break;
+                        }
+                    });
+                    
+                    renderTodoItems();
+                    renderEventItems();
+                    renderFeedbackItems();
+                });
             };
-            buttonsEl.appendChild(createBtn('«', () => onPageClick(currentPage - 1), currentPage > 1));
-            for (let i = 1; i <= pageCount; i++) { buttonsEl.appendChild(createBtn(i, () => onPageClick(i), true)); }
-            buttonsEl.appendChild(createBtn('»', () => onPageClick(currentPage + 1), currentPage < pageCount));
-        };
+            
+            // =================================================================
+            // --- Event Listeners Setup ---
+            // =================================================================
+            closeNotificationModal.addEventListener('click', () => notificationModal.classList.add('hidden'));
+            confirmCancel.addEventListener('click', () => { confirmationModal.classList.add('hidden'); confirmCallback = null; });
+            confirmOk.addEventListener('click', () => { confirmationModal.classList.add('hidden'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
+            closeModal.addEventListener('click', () => imageModal.classList.add('hidden'));
+            imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
+            closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
+            printDetail.addEventListener('click', () => {
+                detailModal.classList.add("printable-modal");
+                window.print();
+                detailModal.classList.remove("printable-modal");
+            });
+            closeEventDetailModal.addEventListener('click', () => eventDetailModal.classList.add('hidden'));
+            printEventDetail.addEventListener('click', () => {
+                window.print();
+            });
 
-        // --- 填充並顯示明細 Modal 的函數 ---
-        const populateAndShowDetailModal = (item) => {
-            detailProductionId.textContent = item.productionId || '-'; detailAssemblyId.textContent = item.assemblyId || '-';
-            detailPartNumber.textContent = item.partNumber || '-'; detailDate.textContent = item.date || '-';
-            detailContentText.textContent = item.content || '-';
-            if (item.image) {
-                detailImage.src = item.image; detailImage.alt = `${item.partNumber} 的圖片`;
-                detailImageContainer.classList.remove('hidden');
-            } else { detailImageContainer.classList.add('hidden'); detailImage.src = ''; }
-            detailModal.classList.remove('hidden');
-        };
+            tabTodo.addEventListener('click', () => switchTab('todo'));
+            tabTracking.addEventListener('click', () => switchTab('tracking'));
+            tabFeedback.addEventListener('click', () => switchTab('feedback'));
 
-        const populateAndShowEventDetailModal = (item) => {
-            detailEventDate.textContent = item.date || '-';
-            detailEventMatter.textContent = item.matter || '-';
-            detailEventPersonnel.textContent = item.personnel || '-';
-            detailEventStatus.textContent = item.closed ? '已結案' : '處理中';
-            eventDetailModal.classList.remove('hidden');
-        };
+            // --- 待修改明細 (Todo) Section ---
+            addItemForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!appDataCollectionRef) return;
+                const imageFile = document.getElementById('todo-imageUpload').files[0];
+                if (imageFile && imageFile.size > 750 * 1024) { return showNotification("圖片檔案過大，請選擇小於 750KB 的圖片。"); }
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    try {
+                        const docRef = await addDoc(appDataCollectionRef, {
+                            type: 'todo',
+                            productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
+                            partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
+                            date: document.getElementById('todo-date').value, image: reader.result || null,
+                            completed: false, createdAt: serverTimestamp()
+                        });
+                        newItemsToHighlight.add(docRef.id);
+                        addItemForm.reset();
+                        document.getElementById('todo-date').valueAsDate = new Date();
+                    } catch (error) { showNotification(`新增待辦失敗: ${error.message}`); }
+                };
+                if (imageFile) reader.readAsDataURL(imageFile); else reader.onloadend();
+            });
 
+            document.getElementById('list-container-todo').addEventListener('click', async (e) => {
+                const target = e.target; const tr = target.closest('tr'); if (!tr) return;
+                const id = tr.dataset.id; 
+                if (!appDataCollectionRef) return;
+                const docRef = doc(appDataCollectionRef, id);
+                if (target.classList.contains('toggle-complete')) {
+                    const item = allTodoItems.find(i => i.id === id); await updateDoc(docRef, { completed: !item.completed });
+                } else if (target.classList.contains('delete-item')) {
+                    showConfirmation('您確定要刪除這個項目嗎？', () => deleteDoc(docRef));
+                } else if (target.classList.contains('view-image')) {
+                    const item = allTodoItems.find(i => i.id === id); if (item && item.image) { modalImage.src = item.image; imageModal.classList.remove('hidden'); }
+                } else if (target.classList.contains('view-detail')) { 
+                    const item = allTodoItems.find(i => i.id === id); if (item) { populateAndShowDetailModal(item); }
+                } else if (target.classList.contains('edit-item')) {
+                    editingItemId = id; renderTodoItems();
+                } else if (target.classList.contains('cancel-edit')) {
+                    editingItemId = null; renderTodoItems();
+                } else if (target.classList.contains('save-item')) {
+                    try {
+                        await updateDoc(docRef, {
+                            productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
+                            partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
+                            date: tr.querySelector('.edit-date').value,
+                        });
+                        editingItemId = null;
+                    } catch(error) { showNotification(`儲存失败: ${error.message}`); }
+                }
+            });
+            
+            filterAllBtn.addEventListener('click', () => setFilter('all')); 
+            filterPendingBtn.addEventListener('click', () => setFilter('pending')); 
+            filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
+            todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
+
+            // --- 事件追蹤 (Event) Section ---
+            addEventForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!appDataCollectionRef) return;
+                try {
+                    await addDoc(appDataCollectionRef, {
+                        type: 'event',
+                        date: document.getElementById('event-date').value, 
+                        matter: document.getElementById('event-matter').value,
+                        personnel: document.getElementById('event-personnel').value, 
+                        closed: document.getElementById('event-closed').checked,
+                        priority: document.getElementById('event-priority').value,
+                        archived: false,
+                        createdAt: serverTimestamp()
+                    });
+                    addEventForm.reset(); 
+                    document.getElementById('event-date').valueAsDate = new Date();
+                } catch (error) { showNotification(`新增事件失敗: ${error.message}`); }
+            });
+
+            contentTracking.addEventListener('click', async (e) => {
+                const target = e.target;
+                const id = target.dataset.id;
+                const tr = target.closest('tr');
+                if (!id || !appDataCollectionRef) return;
+                const docRef = doc(appDataCollectionRef, id);
+
+                if (target.classList.contains('delete-event')) {
+                    showConfirmation('您確定要永久刪除這個事件嗎？', () => deleteDoc(docRef));
+                } else if (target.classList.contains('archive-event')) {
+                    await updateDoc(docRef, { archived: true });
+                } else if (target.classList.contains('unarchive-event')) {
+                    await updateDoc(docRef, { archived: false });
+                } else if (target.classList.contains('toggle-event-closed')) {
+                    const item = allEventItems.find(i => i.id === id);
+                    if (item) await updateDoc(docRef, { closed: !item.closed });
+                } else if (target.classList.contains('view-event-detail')) {
+                    const item = allEventItems.find(i => i.id === id);
+                    if(item) populateAndShowEventDetailModal(item);
+                } else if (target.classList.contains('edit-event')) {
+                    editingEventId = id;
+                    renderEventItems();
+                } else if (target.classList.contains('cancel-edit-event')) {
+                    editingEventId = null;
+                    renderEventItems();
+                } else if (target.classList.contains('save-event')) {
+                     if (tr) {
+                        try {
+                            const updatedData = {
+                                date: tr.querySelector('.edit-event-date').value,
+                                matter: tr.querySelector('.edit-event-matter').value,
+                                personnel: tr.querySelector('.edit-event-personnel').value,
+                                priority: tr.querySelector('.edit-event-priority').value
+                            };
+                            await updateDoc(docRef, updatedData);
+                            editingEventId = null;
+                        } catch (error) {
+                            showNotification(`儲存失敗: ${error.message}`);
+                            editingEventId = null;
+                            renderEventItems();
+                        }
+                    }
+                }
+            });
+
+            printEventListBtn.addEventListener('click', () => {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('event-print-date').textContent = `日期：${yyyy}/${mm}/${dd}`;
+                
+                document.body.classList.add('is-printing-list');
+                renderEventItems();
+                window.print();
+            });
+            
+            eventViewActiveBtn.addEventListener('click', () => setEventViewMode('active'));
+            eventViewArchivedBtn.addEventListener('click', () => setEventViewMode('archived'));
+            eventSortSelect.addEventListener('change', (e) => {
+                currentEventSort = e.target.value;
+                renderEventItems();
+            });
+            eventSearchInput.addEventListener('input', renderEventItems);
+
+            // --- 問題反饋 (Feedback) Section ---
+             addFeedbackForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!appDataCollectionRef) return;
+                const solution = document.getElementById('feedback-solution').value;
+                const status = document.getElementById('feedback-status').value;
+                if (status === '已結案' && !solution.trim()) { return showNotification('必須填寫解決方式才能結案。'); }
+                try {
+                    await addDoc(appDataCollectionRef, {
+                        type: 'feedback',
+                        feedbackType: document.getElementById('feedback-type').value,
+                        problem: document.getElementById('feedback-problem').value,
+                        solution: solution, status: status, createdAt: serverTimestamp()
+                    });
+                    addFeedbackForm.reset();
+                } catch (error) { showNotification(`新增反饋失敗: ${error.message}`); }
+            });
+
+            contentFeedback.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('delete-feedback')) {
+                    if (!appDataCollectionRef) return;
+                    const id = e.target.dataset.id;
+                    showConfirmation('您確定要刪除這條反饋嗎？', () => deleteDoc(doc(appDataCollectionRef, id)));
+                }
+            });
+
+            feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
+
+        });
     </script>
 </body>
 </html>
