@@ -736,6 +736,32 @@
                     renderFeedbackItems();
                 });
             };
+
+            // --- Firebase 初始化 ---
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    authStatus.textContent = `已連線 | 公開共享模式`;
+                    document.querySelector('#addEventForm button[type="submit"]').disabled = false;
+                    document.querySelector('#addFeedbackForm button[type="submit"]').disabled = false;
+                    todoSubmitButton.disabled = false;
+                    
+                    listenForAllData();
+                } else {
+                    authStatus.textContent = '正在驗證身份...';
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("匿名登入失敗:", error);
+                        authStatus.textContent = `錯誤：無法連接。 ${error.message}`;
+                    }
+                }
+            });
             
             // =================================================================
             // --- Event Listeners Setup ---
