@@ -108,7 +108,7 @@
                 border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 1px solid #374151;
+                border: 1px solid #e5e7eb;
                 padding: 8px;
                 font-size: 10pt;
                 text-align: left;
@@ -276,7 +276,17 @@
                 </div>
                 <div class="table-container">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">優先順序</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th></tr></thead>
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">優先順序</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">事項</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">相關人員</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">流程追蹤</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
                         <tbody id="event-itemsList" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
@@ -378,7 +388,7 @@
         import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // This function will run once the entire DOM is loaded and ready.
-        window.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => {
             
             // --- DOM 元素 ---
             const mainContent = document.getElementById('main-content');
@@ -463,7 +473,6 @@
             let db, auth;
             let appDataCollectionRef;
 
-
             // --- 日期初始化 ---
             document.getElementById('todo-date').valueAsDate = new Date();
             document.getElementById('event-date').valueAsDate = new Date();
@@ -471,14 +480,12 @@
             // --- Modal 輔助函數 ---
             const showNotification = (message) => { notificationMessage.textContent = message; notificationModal.classList.remove('hidden'); };
             const showConfirmation = (message, callback) => { confirmationMessage.textContent = message; confirmCallback = callback; confirmationModal.classList.remove('hidden'); };
-            
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
                 document.body.classList.remove('is-printing-list');
                 renderEventItems();
             });
-
 
             // --- Tab Switching ---
             const switchTab = (activeTab) => {
@@ -499,41 +506,11 @@
                     }
                 }
             };
-
+            
             // --- Firebase 設定 ---
             const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
             const appId = "sunyu-check";
 
-
-            // --- Firebase 初始化 ---
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                authStatus.textContent = "錯誤：找不到 Firebase 設定。";
-            } else {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                
-                appDataCollectionRef = collection(db, `/artifacts/${appId}/public/data/sharedTodoItems`);
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        authStatus.textContent = `已連線 | 公開共享模式`;
-                        document.querySelector('#addEventForm button[type="submit"]').disabled = false;
-                        document.querySelector('#addFeedbackForm button[type="submit"]').disabled = false;
-                        todoSubmitButton.disabled = false;
-                        
-                        listenForAllData();
-                    } else {
-                        authStatus.textContent = '正在驗證身份...';
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("匿名登入失敗:", error);
-                            authStatus.textContent = `錯誤：無法連接。 ${error.message}`;
-                        }
-                    }
-                });
-            }
 
             // --- Render and Helper Functions (Defined before they are called) ---
             const getPriorityIcon = (priority) => {
@@ -675,6 +652,7 @@
                             <td class="px-4 py-4"><input type="date" class="edit-input edit-event-date" value="${item.date}"></td>
                             <td class="px-4 py-4"><input type="text" class="edit-input edit-event-matter" value="${item.matter || ''}"></td>
                             <td class="px-4 py-4"><input type="text" class="edit-input edit-event-personnel" value="${item.personnel || ''}"></td>
+                            <td class="px-4 py-4"><textarea class="edit-input edit-event-process">${item.processTracking || ''}</textarea></td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="ml-2 align-middle ${item.closed ? 'text-gray-500' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span></td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                 <button data-id="${item.id}" class="save-event text-green-600 hover:text-green-900 mr-4">儲存</button>
@@ -690,6 +668,7 @@
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
                             <td class="px-4 py-4 text-sm text-gray-900">${item.matter}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.personnel}</td>
+                            <td class="px-4 py-4 text-sm text-gray-500">${item.processTracking || '-'}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm">
                                 <input type="checkbox" data-id="${item.id}" class="toggle-event-closed align-middle h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${item.closed ? 'checked' : ''}>
                                 <span class="ml-2 align-middle ${item.closed ? 'text-gray-500 line-through' : 'text-gray-900'}">${item.closed ? '已結案' : '處理中'}</span>
@@ -711,7 +690,6 @@
                 renderEventItems();
             };
             
-
             const renderFeedbackItems = () => {
                 const filterType = feedbackFilterType.value;
                 const filteredList = allFeedbackItems.filter(item => !filterType || item.feedbackType === filterType);
@@ -724,8 +702,7 @@
                 });
                 setupPagination(filteredList.length, currentPageFeedback, paginationContainerFeedback, pageInfoFeedback, paginationButtonsFeedback, (page) => { currentPageFeedback = page; renderFeedbackItems(); });
             };
-            // =================================================================
-
+            
             // =================================================================
             // --- Unified Data Listener ---
             // =================================================================
@@ -854,6 +831,7 @@
                         closed: document.getElementById('event-closed').checked,
                         priority: document.getElementById('event-priority').value,
                         archived: false,
+                        processTracking: "",
                         createdAt: serverTimestamp()
                     });
                     addEventForm.reset(); 
@@ -893,7 +871,8 @@
                                 date: tr.querySelector('.edit-event-date').value,
                                 matter: tr.querySelector('.edit-event-matter').value,
                                 personnel: tr.querySelector('.edit-event-personnel').value,
-                                priority: tr.querySelector('.edit-event-priority').value
+                                priority: tr.querySelector('.edit-event-priority').value,
+                                processTracking: tr.querySelector('.edit-event-process').value
                             };
                             await updateDoc(docRef, updatedData);
                             editingEventId = null;
