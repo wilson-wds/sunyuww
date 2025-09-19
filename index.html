@@ -188,6 +188,7 @@
                                 <button id="filter-all" class="filter-btn active">全部</button>
                                 <button id="filter-pending" class="filter-btn">待處理</button>
                                 <button id="filter-completed" class="filter-btn">已完成</button>
+                                <button id="filter-handedOver" class="filter-btn">已移交</button>
                             </div>
                         </div>
                         <div class="table-container">
@@ -392,6 +393,7 @@
             const filterAllBtn = document.getElementById('filter-all');
             const filterPendingBtn = document.getElementById('filter-pending');
             const filterCompletedBtn = document.getElementById('filter-completed');
+            const filterHandedOverBtn = document.getElementById('filter-handedOver');
             const paginationContainerTodo = document.getElementById('pagination-container-todo');
             const pageInfoTodo = document.getElementById('page-info-todo');
             const paginationButtonsTodo = document.getElementById('pagination-buttons-todo');
@@ -565,17 +567,69 @@
             const renderTodoItems = () => {
                 if (!todoSearchInput) return;
                 const searchTerm = todoSearchInput.value.toLowerCase();
-                let filteredList = allTodoItems.filter(item => item.productionId?.toLowerCase().includes(searchTerm) || item.assemblyId?.toLowerCase().includes(searchTerm) || item.partNumber?.toLowerCase().includes(searchTerm));
-                if (currentFilter === 'pending') { filteredList = filteredList.filter(item => !item.completed); } else if (currentFilter === 'completed') { filteredList = filteredList.filter(item => item.completed); }
+                let filteredList = [...allTodoItems];
+                
+                if (currentFilter === 'pending') { 
+                    filteredList = allTodoItems.filter(item => !item.completed && !item.handedOver); 
+                } else if (currentFilter === 'completed') { 
+                    filteredList = allTodoItems.filter(item => item.completed && !item.handedOver);
+                } else if (currentFilter === 'handedOver') {
+                    filteredList = allTodoItems.filter(item => item.handedOver);
+                }
+
+                filteredList = filteredList.filter(item => item.productionId?.toLowerCase().includes(searchTerm) || item.assemblyId?.toLowerCase().includes(searchTerm) || item.partNumber?.toLowerCase().includes(searchTerm));
+
                 const paginatedItems = filteredList.slice((currentPageTodo - 1) * itemsPerPage, currentPageTodo * itemsPerPage);
                 todoItemsList.innerHTML = ''; document.getElementById('todo-no-results').classList.toggle('hidden', filteredList.length > 0);
                 paginatedItems.forEach(item => {
-                    const isEditing = item.id === editingItemId; const tr = document.createElement('tr'); tr.dataset.id = item.id; if (item.completed) tr.classList.add('completed');
+                    const isEditing = item.id === editingItemId; 
+                    const tr = document.createElement('tr'); 
+                    tr.dataset.id = item.id; 
+                    if (item.completed) tr.classList.add('completed');
                     if (newItemsToHighlight.has(item.id)) { tr.classList.add('new-item-highlight'); setTimeout(() => tr.classList.remove('new-item-highlight'), 1500); newItemsToHighlight.delete(item.id); }
+                    
                     if (isEditing) {
-                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td><td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td><td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td><td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td><td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="save-item text-green-600 hover:text-green-900">儲存</button><button class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button></td>`;
+                        tr.innerHTML = `
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-4">
+                                  <div><input type="checkbox" class="h-4 w-4 edit-todo-completed" ${item.completed ? 'checked' : ''}><label class="ml-2 text-sm">已完成</label></div>
+                                  <div><input type="checkbox" class="h-4 w-4 edit-todo-handedOver" ${item.handedOver ? 'checked' : ''}><label class="ml-2 text-sm">已移交</label></div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td>
+                            <td class="px-4 py-4"><input class="edit-input edit-assemblyId" value="${item.assemblyId || ''}"></td>
+                            <td class="px-4 py-4"><input class="edit-input edit-partNumber" value="${item.partNumber}"></td>
+                            <td class="px-4 py-4"><textarea class="edit-input edit-content">${item.content}</textarea></td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">無法編輯</td>
+                            <td class="px-4 py-4"><input type="date" class="edit-input edit-date" value="${item.date}"></td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button data-id="${item.id}" class="save-item text-green-600 hover:text-green-900">儲存</button>
+                                <button data-id="${item.id}" class="cancel-edit text-gray-600 hover:text-gray-900 ml-4">取消</button>
+                            </td>`;
                     } else {
-                        tr.innerHTML = `<td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 toggle-complete" ${item.completed ? 'checked' : ''}></td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td><td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<img src="${item.image}" alt="縮圖" class="view-image h-10 w-10 object-cover rounded cursor-pointer">` : '無'}</td><td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td><td class="px-4 py-4 whitespace-nowrap text-sm font-medium"><button class="view-detail text-blue-600 hover:text-blue-900">查看</button><button class="edit-item text-indigo-600 hover:text-indigo-900 ml-4">編輯</button><button class="delete-item text-red-600 hover:text-red-900 ml-4">刪除</button></td>`;
+                        let statusBadge;
+                        if (item.handedOver) {
+                            statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full">已移交</span>`;
+                        } else if (item.completed) {
+                            statusBadge = `<span class="bg-gray-200 text-gray-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full">已完成</span>`;
+                        } else {
+                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full">待處理</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="px-4 py-4 whitespace-nowrap text-sm">${statusBadge}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${item.productionId}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.assemblyId || '-'}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.partNumber}</td>
+                            <td class="px-4 py-4 max-w-xs text-sm text-gray-500 truncate" title="${item.content}">${item.content}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.image ? `<img src="${item.image}" alt="縮圖" class="view-image h-10 w-10 object-cover rounded cursor-pointer">` : '無'}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${item.date}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button data-id="${item.id}" class="view-detail p-1 text-gray-500 hover:text-blue-800" title="查看"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C3.732 4.943 9.522 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-9.03 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg></button>
+                                <button data-id="${item.id}" class="toggle-complete p-1 text-gray-500 hover:text-green-800" title="標示為完成"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></button>
+                                <button data-id="${item.id}" class="edit-item p-1 text-gray-500 hover:text-indigo-800" title="編輯"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                <button data-id="${item.id}" class="delete-item p-1 text-gray-500 hover:text-red-800" title="刪除"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                            </td>`;
                     }
                     todoItemsList.appendChild(tr);
                 });
@@ -583,7 +637,12 @@
             };
             
             const setFilter = (filter) => { currentPageTodo = 1; currentFilter = filter; renderTodoItems(); updateFilterButtons(); };
-            const updateFilterButtons = () => { filterAllBtn.classList.toggle('active', currentFilter === 'all'); filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); filterCompletedBtn.classList.toggle('active', currentFilter === 'completed'); };
+            const updateFilterButtons = () => { 
+                filterAllBtn.classList.toggle('active', currentFilter === 'all'); 
+                filterPendingBtn.classList.toggle('active', currentFilter === 'pending'); 
+                filterCompletedBtn.classList.toggle('active', currentFilter === 'completed');
+                filterHandedOverBtn.classList.toggle('active', currentFilter === 'handedOver');
+            };
             
             const renderEventItems = () => {
                 if (!eventItemsContainer) return;
@@ -626,6 +685,7 @@
                 filteredList.forEach(item => {
                     if (item.date !== currentDate) {
                         currentDate = item.date;
+                        if (tableHtml !== '') { tableHtml += `</tbody></table></div>`; }
                         tableHtml += `<h3 class="bg-gray-100 font-bold p-2 my-4 text-lg">${currentDate}</h3>
                                     <div class="table-container">
                                         <table class="min-w-full">
@@ -676,7 +736,7 @@
                     rowHtml += '</tr>';
                     tableHtml += rowHtml;
 
-                    if (filteredList.indexOf(item) === filteredList.length - 1 || item.date !== filteredList[filteredList.indexOf(item) + 1]?.date) {
+                    if (filteredList.indexOf(item) === filteredList.length - 1) {
                          tableHtml += `</tbody></table></div>`;
                     }
                 });
@@ -801,7 +861,9 @@
                             productionId: document.getElementById('todo-productionId').value, assemblyId: document.getElementById('todo-assemblyId').value,
                             partNumber: document.getElementById('todo-partNumber').value, content: document.getElementById('todo-content').value,
                             date: document.getElementById('todo-date').value, image: reader.result || null,
-                            completed: false, createdAt: serverTimestamp()
+                            completed: false, 
+                            handedOver: false,
+                            createdAt: serverTimestamp()
                         });
                         newItemsToHighlight.add(docRef.id);
                         addItemForm.reset();
@@ -831,9 +893,13 @@
                 } else if (target.classList.contains('save-item')) {
                     try {
                         await updateDoc(docRef, {
-                            productionId: tr.querySelector('.edit-productionId').value, assemblyId: tr.querySelector('.edit-assemblyId').value,
-                            partNumber: tr.querySelector('.edit-partNumber').value, content: tr.querySelector('.edit-content').value,
+                            productionId: tr.querySelector('.edit-productionId').value,
+                            assemblyId: tr.querySelector('.edit-assemblyId').value,
+                            partNumber: tr.querySelector('.edit-partNumber').value,
+                            content: tr.querySelector('.edit-content').value,
                             date: tr.querySelector('.edit-date').value,
+                            completed: tr.querySelector('.edit-todo-completed').checked,
+                            handedOver: tr.querySelector('.edit-todo-handedOver').checked,
                         });
                         editingItemId = null;
                     } catch(error) { showNotification(`儲存失败: ${error.message}`); }
@@ -843,6 +909,7 @@
             filterAllBtn.addEventListener('click', () => setFilter('all')); 
             filterPendingBtn.addEventListener('click', () => setFilter('pending')); 
             filterCompletedBtn.addEventListener('click', () => setFilter('completed'));
+            filterHandedOverBtn.addEventListener('click', () => setFilter('handedOver'));
             todoSearchInput.addEventListener('input', () => { currentPageTodo = 1; renderTodoItems(); });
 
             // --- 事件追蹤 (Event) Section ---
