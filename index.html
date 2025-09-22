@@ -225,6 +225,10 @@
             }
 
             /* --- Gantt Print Styles --- */
+             @page {
+                size: A4 portrait;
+                margin: 1cm;
+            }
             body.is-printing-gantt > *:not(main),
             body.is-printing-gantt > main > *:not(#content-gantt) {
                 display: none !important;
@@ -232,12 +236,14 @@
             body.is-printing-gantt #content-gantt {
                 display: block !important;
             }
-            body.is-printing-gantt #content-gantt > header { /* The one with buttons */
+            body.is-printing-gantt #gantt-screen-header {
                 display: none !important;
             }
-            @page {
-                size: landscape;
-                margin: 1cm;
+            #gantt-print-header {
+                display: none;
+            }
+            body.is-printing-gantt #gantt-print-header {
+                display: block !important;
             }
             body.is-printing-gantt {
                 -webkit-print-color-adjust: exact !important;
@@ -488,21 +494,28 @@
         </div>
         <!-- START: Gantt Chart Content -->
         <div id="content-gantt" class="hidden">
-             <!-- Header -->
-            <header class="bg-white shadow-md flex items-center justify-between px-6 mb-4 rounded-lg" style="height: var(--header-height);">
+             <!-- Print Header for Gantt -->
+             <div id="gantt-print-header">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl font-bold">周計畫排程</h1>
+                    <p id="gantt-print-date" class="text-sm"></p>
+                </div>
+             </div>
+             <!-- Screen Header -->
+            <header id="gantt-screen-header" class="bg-white shadow-md flex items-center justify-between px-6 mb-4 rounded-lg" style="height: var(--header-height);">
                 <div class="flex items-center space-x-4">
                     <h1 class="text-xl font-bold text-gray-700">周計畫排程</h1>
-                    <span id="current-date" class="text-sm text-gray-500"></span>
+                    <span id="gantt-current-date" class="text-sm text-gray-500"></span>
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-2">
                         <input type="checkbox" id="printProgressToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="printProgressToggle" class="text-sm font-medium text-gray-700">列印進度條</label>
                     </div>
-                    <button id="printBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
+                    <button id="ganttPrintBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
                         列印
                     </button>
-                    <button id="addTaskBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
+                    <button id="ganttAddTaskBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
                         新增任務
                     </button>
                 </div>
@@ -579,43 +592,43 @@
     </div>
     
     <!-- Modal for Add/Edit Task (Gantt) -->
-    <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
-        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md transform transition-all scale-95 opacity-0" id="modal-content">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800">新增任務</h2>
-            <form id="taskForm">
-                <input type="hidden" id="taskId">
+    <div id="ganttTaskModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div id="gantt-modal-content" class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md transform transition-all scale-95 opacity-0" >
+            <h2 id="ganttModalTitle" class="text-2xl font-bold mb-6 text-gray-800">新增任務</h2>
+            <form id="ganttTaskForm">
+                <input type="hidden" id="ganttTaskId">
                 <div class="mb-4">
-                    <label for="taskName" class="block text-sm font-medium text-gray-700 mb-1">任務名稱</label>
-                    <input type="text" id="taskName" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <label for="ganttTaskName" class="block text-sm font-medium text-gray-700 mb-1">任務名稱</label>
+                    <input type="text" id="ganttTaskName" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                 </div>
                 <div class="mb-4">
-                    <label for="taskAssignee" class="block text-sm font-medium text-gray-700 mb-1">負責人員</label>
-                    <input type="text" id="taskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <label for="ganttTaskAssignee" class="block text-sm font-medium text-gray-700 mb-1">負責人員</label>
+                    <input type="text" id="ganttTaskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label for="taskStart" class="block text-sm font-medium text-gray-700 mb-1">開始日期</label>
-                        <input type="date" id="taskStart" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        <label for="ganttTaskStart" class="block text-sm font-medium text-gray-700 mb-1">開始日期</label>
+                        <input type="date" id="ganttTaskStart" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
                     <div>
-                        <label for="taskDuration" class="block text-sm font-medium text-gray-700 mb-1">工期 (工作日)</label>
-                        <input type="number" id="taskDuration" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        <label for="ganttTaskDuration" class="block text-sm font-medium text-gray-700 mb-1">工期 (工作日)</label>
+                        <input type="number" id="ganttTaskDuration" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
                 </div>
                 <div class="mb-6">
-                    <label for="taskProgress" class="block text-sm font-medium text-gray-700 mb-1">進度 (%)</label>
-                    <input type="range" id="taskProgress" min="0" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span id="progressValue" class="text-sm text-gray-600">0%</span>
+                    <label for="ganttTaskProgress" class="block text-sm font-medium text-gray-700 mb-1">進度 (%)</label>
+                    <input type="range" id="ganttTaskProgress" min="0" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <span id="ganttProgressValue" class="text-sm text-gray-600">0%</span>
                 </div>
                  <div class="mb-4">
-                    <label for="taskParent" class="block text-sm font-medium text-gray-700 mb-1">父任務 (可選)</label>
-                    <select id="taskParent" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <label for="ganttTaskParent" class="block text-sm font-medium text-gray-700 mb-1">父任務 (可選)</label>
+                    <select id="ganttTaskParent" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         <option value="">無</option>
                     </select>
                 </div>
                 <div class="flex justify-end space-x-4">
-                    <button type="button" id="cancelBtn" class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">取消</button>
-                    <button type="button" id="deleteBtn" class="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none hidden">刪除</button>
+                    <button type="button" id="ganttCancelBtn" class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">取消</button>
+                    <button type="button" id="ganttDeleteBtn" class="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none hidden">刪除</button>
                     <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none">儲存</button>
                 </div>
             </form>
@@ -728,7 +741,9 @@
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
                 document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'print-with-progress');
+                // Re-render views
                 renderEventItems();
+                renderGantt(false); 
             });
 
             // --- Tab Switching ---
@@ -1280,36 +1295,38 @@
             const ganttTaskGrid = document.getElementById('gantt-task-grid');
             const ganttTimeline = document.getElementById('gantt-timeline');
             const ganttContainer = document.getElementById('gantt-container');
-            const printBtn = document.getElementById('printBtn');
-            const currentDateEl = document.getElementById('current-date');
+            const ganttPrintBtn = document.getElementById('ganttPrintBtn');
+            const ganttCurrentDateEl = document.getElementById('gantt-current-date');
             const printProgressToggle = document.getElementById('printProgressToggle');
             
             // Modal Elements
-            const addTaskBtn = document.getElementById('addTaskBtn');
-            const taskModal = document.getElementById('taskModal');
-            const modalContent = document.getElementById('modal-content');
-            const modalTitle = document.getElementById('modalTitle');
-            const cancelBtn = document.getElementById('cancelBtn');
-            const deleteBtn = document.getElementById('deleteBtn');
-            const taskForm = document.getElementById('taskForm');
-            const taskIdInput = document.getElementById('taskId');
-            const taskNameInput = document.getElementById('taskName');
-            const taskAssigneeInput = document.getElementById('taskAssignee');
-            const taskStartInput = document.getElementById('taskStart');
-            const taskDurationInput = document.getElementById('taskDuration');
-            const taskProgressInput = document.getElementById('taskProgress');
-            const progressValue = document.getElementById('progressValue');
-            const taskParentSelect = document.getElementById('taskParent');
+            const ganttAddTaskBtn = document.getElementById('ganttAddTaskBtn');
+            const ganttTaskModal = document.getElementById('ganttTaskModal');
+            const ganttModalContent = document.getElementById('gantt-modal-content');
+            const ganttModalTitle = document.getElementById('ganttModalTitle');
+            const ganttCancelBtn = document.getElementById('ganttCancelBtn');
+            const ganttDeleteBtn = document.getElementById('ganttDeleteBtn');
+            const ganttTaskForm = document.getElementById('ganttTaskForm');
+            const ganttTaskIdInput = document.getElementById('ganttTaskId');
+            const ganttTaskNameInput = document.getElementById('ganttTaskName');
+            const ganttTaskAssigneeInput = document.getElementById('ganttTaskAssignee');
+            const ganttTaskStartInput = document.getElementById('ganttTaskStart');
+            const ganttTaskDurationInput = document.getElementById('ganttTaskDuration');
+            const ganttTaskProgressInput = document.getElementById('ganttTaskProgress');
+            const ganttProgressValue = document.getElementById('ganttProgressValue');
+            const ganttTaskParentSelect = document.getElementById('ganttTaskParent');
 
             // Set current date in header
             const ganttToday = new Date();
             const year = ganttToday.getFullYear();
             const month = String(ganttToday.getMonth() + 1).padStart(2, '0');
             const day = String(ganttToday.getDate()).padStart(2, '0');
-            currentDateEl.textContent = `${year}-${month}-${day}`;
+            ganttCurrentDateEl.textContent = `${year}-${month}-${day}`;
 
             // Gantt settings
-            const dayWidth = 40; // width of a day in pixels
+            const ganttDayWidthScreen = 40;
+            const ganttDayWidthPrint = 12; 
+            let dayWidth = ganttDayWidthScreen; 
             const columns = [
                 { label: 'WBS', width: 60 },
                 { label: '任務名稱', width: 180 },
@@ -1462,7 +1479,8 @@
                 ganttContainer.style.setProperty('--sidebar-width', `${totalWidth}px`);
             }
             
-            function render() {
+            function renderGantt(isForPrint = false) {
+                dayWidth = isForPrint ? ganttDayWidthPrint : ganttDayWidthScreen;
                 const processedTasksWithHierarchy = processTasks(tasks);
                 const displayTasks = [];
 
@@ -1649,49 +1667,49 @@
             
             // Modal Logic
             function openModal(taskId = null) {
-                taskForm.reset();
-                deleteBtn.classList.add('hidden');
+                ganttTaskForm.reset();
+                ganttDeleteBtn.classList.add('hidden');
                 populateParentTaskOptions(taskId);
 
-                taskStartInput.disabled = false;
-                taskDurationInput.disabled = false;
-                taskProgressInput.disabled = false;
+                ganttTaskStartInput.disabled = false;
+                ganttTaskDurationInput.disabled = false;
+                ganttTaskProgressInput.disabled = false;
 
                 if (taskId) {
                     const task = tasks.find(t => t.id === taskId);
                     const children = tasks.filter(t => t.parentId === taskId);
-                    modalTitle.textContent = '編輯任務';
-                    taskIdInput.value = task.id;
-                    taskNameInput.value = task.name;
-                    taskAssigneeInput.value = task.assignee || '';
-                    taskStartInput.value = task.start;
-                    taskDurationInput.value = task.duration;
-                    taskProgressInput.value = task.progress;
-                    progressValue.textContent = `${task.progress}%`;
-                    taskParentSelect.value = task.parentId || "";
-                    deleteBtn.classList.remove('hidden');
+                    ganttModalTitle.textContent = '編輯任務';
+                    ganttTaskIdInput.value = task.id;
+                    ganttTaskNameInput.value = task.name;
+                    ganttTaskAssigneeInput.value = task.assignee || '';
+                    ganttTaskStartInput.value = task.start;
+                    ganttTaskDurationInput.value = task.duration;
+                    ganttTaskProgressInput.value = task.progress;
+                    ganttProgressValue.textContent = `${task.progress}%`;
+                    ganttTaskParentSelect.value = task.parentId || "";
+                    ganttDeleteBtn.classList.remove('hidden');
 
                     if(children.length > 0) {
-                        taskStartInput.disabled = true;
-                        taskDurationInput.disabled = true;
-                        taskProgressInput.disabled = true;
+                        ganttTaskStartInput.disabled = true;
+                        ganttTaskDurationInput.disabled = true;
+                        ganttTaskProgressInput.disabled = true;
                     }
 
                 } else {
-                    modalTitle.textContent = '新增任務';
-                    taskIdInput.value = '';
-                    progressValue.textContent = `0%`;
+                    ganttModalTitle.textContent = '新增任務';
+                    ganttTaskIdInput.value = '';
+                    ganttProgressValue.textContent = `0%`;
                 }
                 
-                taskModal.classList.remove('hidden');
-                taskModal.classList.add('flex');
+                ganttTaskModal.classList.remove('hidden');
+                ganttTaskModal.classList.add('flex');
                 setTimeout(() => {
-                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    ganttModalContent.classList.remove('scale-95', 'opacity-0');
                 }, 10);
             }
             
             function populateParentTaskOptions(currentTaskId) {
-                taskParentSelect.innerHTML = '<option value="">無</option>';
+                ganttTaskParentSelect.innerHTML = '<option value="">無</option>';
                 tasks.forEach(task => {
                     if (task.id === currentTaskId) return;
                     const childrenOfCurrent = tasks.filter(t => t.parentId === currentTaskId).map(t => t.id);
@@ -1700,29 +1718,29 @@
                     const option = document.createElement('option');
                     option.value = task.id;
                     option.textContent = task.name;
-                    taskParentSelect.appendChild(option);
+                    ganttTaskParentSelect.appendChild(option);
                 });
             }
 
 
             function closeGanttModal() {
-                modalContent.classList.add('scale-95', 'opacity-0');
+                ganttModalContent.classList.add('scale-95', 'opacity-0');
                 setTimeout(() => {
-                    taskModal.classList.add('hidden');
-                    taskModal.classList.remove('flex');
+                    ganttTaskModal.classList.add('hidden');
+                    ganttTaskModal.classList.remove('flex');
                 }, 200);
             }
 
             function saveTask() {
-                const id = parseInt(taskIdInput.value);
-                const parentId = taskParentSelect.value ? parseInt(taskParentSelect.value) : null;
+                const id = parseInt(ganttTaskIdInput.value);
+                const parentId = ganttTaskParentSelect.value ? parseInt(ganttTaskParentSelect.value) : null;
 
                 const taskData = {
-                    name: taskNameInput.value,
-                    assignee: taskAssigneeInput.value,
-                    start: taskStartInput.value,
-                    duration: parseInt(taskDurationInput.value),
-                    progress: parseInt(taskProgressInput.value),
+                    name: ganttTaskNameInput.value,
+                    assignee: ganttTaskAssigneeInput.value,
+                    start: ganttTaskStartInput.value,
+                    duration: parseInt(ganttTaskDurationInput.value),
+                    progress: parseInt(ganttTaskProgressInput.value),
                     parentId: parentId
                 };
                 
@@ -1734,12 +1752,12 @@
                     tasks.push(taskData);
                 }
                 
-                render();
+                renderGantt();
                 closeGanttModal();
             }
 
             function deleteTask() {
-                const id = parseInt(taskIdInput.value);
+                const id = parseInt(ganttTaskIdInput.value);
                 const tasksToDelete = new Set([id]);
                 let changed = true;
                 while(changed) {
@@ -1754,33 +1772,44 @@
                 }
 
                 tasks = tasks.filter(t => !tasksToDelete.has(t.id));
-                render();
+                renderGantt();
                 closeGanttModal();
             }
-
-            // --- Event Listeners ---
-            addTaskBtn.addEventListener('click', () => openModal());
             
-            printBtn.addEventListener('click', () => {
+            function prepareAndPrintGantt() {
+                const ganttPrintDate = document.getElementById('gantt-print-date');
+                const today = new Date();
+                ganttPrintDate.textContent = `列印日期：${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+                
                 if (printProgressToggle.checked) {
                     document.body.classList.add('print-with-progress');
                 }
                 document.body.classList.add('is-printing-gantt');
-                window.print();
-            });
 
-            cancelBtn.addEventListener('click', closeGanttModal);
-            taskModal.addEventListener('click', (e) => {
-                if (e.target === taskModal) closeGanttModal();
+                renderGantt(true);
+
+                setTimeout(() => {
+                    window.print();
+                }, 100);
+            }
+
+            // --- Event Listeners ---
+            ganttAddTaskBtn.addEventListener('click', () => openModal());
+            
+            ganttPrintBtn.addEventListener('click', prepareAndPrintGantt);
+
+            ganttCancelBtn.addEventListener('click', closeGanttModal);
+            ganttTaskModal.addEventListener('click', (e) => {
+                if (e.target === ganttTaskModal) closeGanttModal();
             });
-            taskForm.addEventListener('submit', (e) => {
+            ganttTaskForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 saveTask();
             });
-            deleteBtn.addEventListener('click', deleteTask);
+            ganttDeleteBtn.addEventListener('click', deleteTask);
 
-            taskProgressInput.addEventListener('input', (e) => {
-                progressValue.textContent = `${e.target.value}%`;
+            ganttTaskProgressInput.addEventListener('input', (e) => {
+                ganttProgressValue.textContent = `${e.target.value}%`;
             });
 
             // Sync Scrolling
@@ -1819,7 +1848,7 @@
                         updateSidebarWidth();
                         // Re-render header and rows with new widths
                         createHeader(); // Redraw header
-                        render(); // Redraw everything else
+                        renderGantt(); // Redraw everything else
                     }
                 }
             }
@@ -1832,7 +1861,7 @@
             
             // Initial Setup
             createHeader();
-            render();
+            renderGantt();
         });
     </script>
 </body>
