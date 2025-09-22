@@ -232,12 +232,12 @@
             body.is-printing-gantt #content-gantt {
                 display: block !important;
             }
-            body.is-printing-gantt #content-gantt > header {
+            body.is-printing-gantt #content-gantt > header { /* The one with buttons */
                 display: none !important;
             }
             @page {
                 size: landscape;
-                margin: 20px;
+                margin: 1cm;
             }
             body.is-printing-gantt {
                 -webkit-print-color-adjust: exact !important;
@@ -247,24 +247,24 @@
                 display: none !important;
             }
             body.is-printing-gantt #gantt-container {
-                display: block !important;
+                display: flex !important;
+                flex-direction: row !important;
+                width: 100% !important;
                 height: auto !important;
                 overflow: visible !important;
-                grid-template-columns: auto 1fr;
             }
             body.is-printing-gantt .gantt-task-grid {
+                flex: 0 0 var(--sidebar-width) !important;
                 width: var(--sidebar-width) !important;
-                border: 0 !important;
+                border-right: 1px solid #ccc !important;
                 overflow: visible !important;
                 height: auto !important;
-                display: block !important;
-                float: left;
             }
             body.is-printing-gantt .gantt-timeline {
+                flex: 1 1 auto !important;
                 width: auto !important;
                 overflow: visible !important;
                 height: auto !important;
-                display: block !important;
             }
             body.is-printing-gantt .task-header, 
             body.is-printing-gantt #timeline-header {
@@ -272,6 +272,19 @@
             }
             body.is-printing-gantt .gantt-task-row {
                 page-break-inside: avoid;
+            }
+            /* Progress Bar Print Control */
+            body.is-printing-gantt:not(.print-with-progress) .task-bar {
+                display: none !important;
+            }
+            body.is-printing-gantt.print-with-progress .task-bar {
+                display: block !important;
+            }
+            body.is-printing-gantt .task-bar,
+            body.is-printing-gantt .task-progress-fill,
+            body.is-printing-gantt .parent-bar {
+                 -webkit-print-color-adjust: exact !important;
+                 print-color-adjust: exact !important;
             }
         }
     </style>
@@ -481,7 +494,11 @@
                     <h1 class="text-xl font-bold text-gray-700">周計畫排程</h1>
                     <span id="current-date" class="text-sm text-gray-500"></span>
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="printProgressToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="printProgressToggle" class="text-sm font-medium text-gray-700">列印進度條</label>
+                    </div>
                     <button id="printBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
                         列印
                     </button>
@@ -710,7 +727,7 @@
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
-                document.body.classList.remove('is-printing-list', 'is-printing-gantt');
+                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'print-with-progress');
                 renderEventItems();
             });
 
@@ -1265,6 +1282,7 @@
             const ganttContainer = document.getElementById('gantt-container');
             const printBtn = document.getElementById('printBtn');
             const currentDateEl = document.getElementById('current-date');
+            const printProgressToggle = document.getElementById('printProgressToggle');
             
             // Modal Elements
             const addTaskBtn = document.getElementById('addTaskBtn');
@@ -1742,10 +1760,15 @@
 
             // --- Event Listeners ---
             addTaskBtn.addEventListener('click', () => openModal());
+            
             printBtn.addEventListener('click', () => {
+                if (printProgressToggle.checked) {
+                    document.body.classList.add('print-with-progress');
+                }
                 document.body.classList.add('is-printing-gantt');
-                window.print()
+                window.print();
             });
+
             cancelBtn.addEventListener('click', closeGanttModal);
             taskModal.addEventListener('click', (e) => {
                 if (e.target === taskModal) closeGanttModal();
