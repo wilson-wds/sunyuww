@@ -12,8 +12,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         /* 自訂樣式 */
+        :root {
+            --header-height: 50px;
+            --timeline-header-height: 50px;
+            --row-height: 40px;
+            --border-color: #e5e7eb;
+            --sidebar-width: 630px; /* 初始側邊欄寬度 */
+        }
         body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            font-family: 'Inter', 'Noto Sans TC', '微軟正黑體', sans-serif;
         }
         .completed > td:not(:first-child):not(:last-child) {
             text-decoration: line-through;
@@ -52,17 +59,118 @@
             border-color: #4f46e5;
         }
         
-        /* --- START: 優化後的列印專用樣式 --- */
+        .gantt-grid {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            height: calc(100vh - var(--header-height) - 150px); /* Approx header + tabs height */
+        }
+        .gantt-task-grid {
+            border-right: 1px solid var(--border-color);
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        .gantt-timeline {
+            overflow-x: auto;
+        }
+        .gantt-task-row, .task-header {
+            display: flex;
+            height: var(--row-height);
+            border-bottom: 1px solid var(--border-color);
+            box-sizing: border-box;
+        }
+        .task-header {
+             height: var(--timeline-header-height);
+             border-bottom: 2px solid var(--border-color);
+        }
+        .task-header-cell, .task-cell {
+            padding: 0.5rem;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        .task-header-cell:last-child, .task-cell:last-child {
+            border-right: none;
+        }
+        .task-header-cell {
+            position: relative;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #4b5563;
+            background-color: #f9fafb;
+        }
+        .col-resizer {
+            position: absolute;
+            right: -3px;
+            top: 0;
+            height: 100%;
+            width: 6px;
+            cursor: col-resize;
+            z-index: 10;
+        }
+        .col-resizer:hover {
+            background-color: rgba(59, 130, 246, 0.3);
+        }
+        .task-bar {
+            position: absolute;
+            height: 8px; /* 統一粗細 */
+            border-radius: 4px; /* 統一圓角 */
+            cursor: pointer;
+            overflow: visible;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            padding: 0; /* 移除內距 */
+        }
+        .task-bar.parent-bar {
+            overflow: visible;
+            box-shadow: none;
+        }
+        .task-progress-fill {
+            height: 100%;
+            border-radius: 4px; /* 匹配外部圓角 */
+        }
+        .task-bar-label {
+            position: absolute;
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            white-space: nowrap;
+            font-size: 0.75rem;
+            color: #4b5563;
+        }
+        .parent-cap {
+            position: absolute;
+            top: -4px;
+            width: 2px;
+            height: 16px;
+            background-color: inherit;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
         @media print {
+            /* --- START: 優化後的列印專用樣式 (Original) --- */
             .print-hide {
                 display: none !important;
             }
-
-            /* --- PRINTING A SINGLE MODAL --- */
-            body:not(.is-printing-list) > *:not(.printable-modal-container) {
-                display: none;
-            }
-            body:not(.is-printing-list) .printable-modal-container {
+            body:not(.is-printing-gantt) .printable-modal-container {
                 display: block !important;
                 position: static;
                 width: 100%;
@@ -70,68 +178,102 @@
                 background: transparent;
                 overflow: visible;
             }
-            body:not(.is-printing-list) .printable-content {
+            body:not(.is-printing-gantt) .printable-content {
                 position: static;
                 width: 100%; margin: 0; padding: 1rem;
                 border: none; box-shadow: none; max-height: none; overflow: visible;
             }
-            body:not(.is-printing-list) #detailModal .printable-content { height: 98vh; }
-            body:not(.is-printing-list) #detailModal .printable-content > .flex-1.min-h-0.overflow-y-auto { overflow: visible; flex: 1; }
-            body:not(.is-printing-list) #detail-content { display: flex; flex-direction: column; height: 100%; }
-            body:not(.is-printing-list) #detail-image-container { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
-            body:not(.is-printing-list) #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
-
-            /* --- PRINTING THE EVENT LIST --- */
+            body:not(.is-printing-gantt) #detailModal .printable-content { height: 98vh; }
+            body:not(.is-printing-gantt) #detailModal .printable-content > .flex-1.min-h-0.overflow-y-auto { overflow: visible; flex: 1; }
+            body:not(.is-printing-gantt) #detail-content { display: flex; flex-direction: column; height: 100%; }
+            body:not(.is-printing-gantt) #detail-image-container { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+            body:not(.is-printing-gantt) #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
             body.is-printing-list #content-todo,
-            body.is-printing-list #content-feedback {
+            body.is-printing-list #content-feedback,
+            body.is-printing-list #content-gantt {
                 display: none !important;
             }
-
             body.is-printing-list main,
             body.is-printing-list #content-tracking {
                 display: block !important;
             }
-
             body.is-printing-list #content-tracking .bg-white {
-                box-shadow: none;
-                border: none;
-                padding: 0;
+                box-shadow: none; border: none; padding: 0;
             }
-            
             body.is-printing-list #event-print-header,
             body.is-printing-list #event-print-footer {
                 display: block !important;
             }
-
             body.is-printing-list table {
-                width: 100%;
-                border-collapse: collapse;
+                width: 100%; border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 1px solid #3C3C3C;
-                padding: 8px;
-                font-size: 10pt;
-                text-align: left;
+                border: 1px solid #3C3C3C; padding: 8px; font-size: 10pt; text-align: left;
             }
             body.is-printing-list thead {
-                background-color: #f9fafb;
-                display: table-header-group;
+                background-color: #f9fafb; display: table-header-group;
             }
-
             body.is-printing-list .toggle-event-closed,
             body.is-printing-list td:last-child,
             body.is-printing-list th:last-child {
                 display: none;
             }
-            
-            /* Highlight for closed items on print */
             body.is-printing-list tr.event-item-closed td {
-                background-color: #f3f4f6 !important; /* gray-100 */
-                -webkit-print-color-adjust: exact; /* Ensures background color prints in Chrome/Safari */
-                print-color-adjust: exact; /* Standard property */
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* --- Gantt Print Styles --- */
+            body.is-printing-gantt > *:not(main),
+            body.is-printing-gantt > main > *:not(#content-gantt) {
+                display: none !important;
+            }
+            body.is-printing-gantt #content-gantt {
+                display: block !important;
+            }
+            body.is-printing-gantt #content-gantt > header {
+                display: none !important;
+            }
+            @page {
+                size: landscape;
+                margin: 20px;
+            }
+            body.is-printing-gantt {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            body.is-printing-gantt .col-resizer {
+                display: none !important;
+            }
+            body.is-printing-gantt #gantt-container {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                grid-template-columns: auto 1fr;
+            }
+            body.is-printing-gantt .gantt-task-grid {
+                width: var(--sidebar-width) !important;
+                border: 0 !important;
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important;
+                float: left;
+            }
+            body.is-printing-gantt .gantt-timeline {
+                width: auto !important;
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important;
+            }
+            body.is-printing-gantt .task-header, 
+            body.is-printing-gantt #timeline-header {
+                position: static !important;
+            }
+            body.is-printing-gantt .gantt-task-row {
+                page-break-inside: avoid;
             }
         }
-        /* --- END: 優化後的列印專用樣式 --- */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -154,6 +296,9 @@
                 </button>
                 <button id="tab-feedback" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                     問題反饋紀錄
+                </button>
+                <button id="tab-gantt" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    周計畫排程
                 </button>
             </nav>
         </div>
@@ -246,7 +391,7 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-4">
-                             <div>
+                            <div>
                                 <label for="event-sortSelect" class="sr-only">排序方式</label>
                                 <select id="event-sortSelect" class="w-full sm:w-auto px-3 py-2 border rounded-md">
                                     <option value="createdAt-desc">最新建立</option>
@@ -266,7 +411,7 @@
                 <div id="event-print-header" class="hidden">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-4">
-                            <img src="https://i.ibb.co/Z62vXSLS/image.jpg" alt="公司圖示" class="h-12">
+                            <img src="https://i.ibb.co/Z62vXSL/image.jpg" alt="公司圖示" class="h-12">
                             <div>
                                 <h1 class="text-2xl font-bold">廠務工作列表</h1>
                                 <p class="text-xs text-gray-600 mt-1">優先順序說明：1 (最優先), 2 (次要), 3 (較緩)</p>
@@ -294,7 +439,7 @@
                 <!-- Print Footer -->
                 <div id="event-print-footer" class="hidden mt-12 pt-4 border-t text-center text-gray-500 text-sm">
                     <p>陸續更新中.....</p>
-                    <img src="https://i.ibb.co/RpjtbNvN/image.jpg" alt="頁尾圖示" class="mt-4 mx-auto h-16">
+                    <img src="https://i.ibb.co/RpjtbNv/image.jpg" alt="頁尾圖示" class="mt-4 mx-auto h-16">
                 </div>
                 <p id="event-no-results" class="text-center py-8 hidden">找不到事件。</p>
             </div>
@@ -314,7 +459,7 @@
 
                 <h2 class="text-2xl font-bold mb-6 border-b pb-3">問題反饋列表</h2>
                 <div class="flex justify-end mb-4">
-                    <select id="feedback-filterType" class="w-full sm:w-1-3 px-3 py-2 border rounded-md">
+                    <select id="feedback-filterType" class="w-full sm:w-1/3 px-3 py-2 border rounded-md">
                         <option value="">所有類型</option><option>硬體問題</option><option>軟體問題</option><option>操作問題</option><option>其他</option>
                     </select>
                 </div>
@@ -328,6 +473,40 @@
                 <p id="feedback-no-results" class="text-center py-8 hidden">找不到反饋紀錄。</p>
             </div>
         </div>
+        <!-- START: Gantt Chart Content -->
+        <div id="content-gantt" class="hidden">
+             <!-- Header -->
+            <header class="bg-white shadow-md flex items-center justify-between px-6 mb-4 rounded-lg" style="height: var(--header-height);">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-700">周計畫排程</h1>
+                    <span id="current-date" class="text-sm text-gray-500"></span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="printBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
+                        列印
+                    </button>
+                    <button id="addTaskBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
+                        新增任務
+                    </button>
+                </div>
+            </header>
+
+            <!-- Gantt Chart Container -->
+            <main id="gantt-container" class="gantt-grid">
+                <!-- Task Grid (Left Side) -->
+                <div id="gantt-task-grid" class="gantt-task-grid bg-white">
+                    <div id="task-grid-header" class="task-header sticky top-0 bg-gray-50 z-10"></div>
+                    <div id="task-list-body"></div>
+                </div>
+
+                <!-- Timeline (Right Side) -->
+                <div id="gantt-timeline" class="gantt-timeline">
+                    <div id="timeline-header" class="timeline-header sticky top-0 bg-gray-50 z-10" style="position: sticky; top: 0;"></div>
+                    <div id="timeline-body" class="relative"></div>
+                </div>
+            </main>
+        </div>
+        <!-- END: Gantt Chart Content -->
         <!-- END: Tab Content -->
     </main>
 
@@ -381,6 +560,50 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal for Add/Edit Task (Gantt) -->
+    <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md transform transition-all scale-95 opacity-0" id="modal-content">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800">新增任務</h2>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="mb-4">
+                    <label for="taskName" class="block text-sm font-medium text-gray-700 mb-1">任務名稱</label>
+                    <input type="text" id="taskName" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="taskAssignee" class="block text-sm font-medium text-gray-700 mb-1">負責人員</label>
+                    <input type="text" id="taskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="taskStart" class="block text-sm font-medium text-gray-700 mb-1">開始日期</label>
+                        <input type="date" id="taskStart" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="taskDuration" class="block text-sm font-medium text-gray-700 mb-1">工期 (工作日)</label>
+                        <input type="number" id="taskDuration" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label for="taskProgress" class="block text-sm font-medium text-gray-700 mb-1">進度 (%)</label>
+                    <input type="range" id="taskProgress" min="0" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <span id="progressValue" class="text-sm text-gray-600">0%</span>
+                </div>
+                 <div class="mb-4">
+                    <label for="taskParent" class="block text-sm font-medium text-gray-700 mb-1">父任務 (可選)</label>
+                    <select id="taskParent" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">無</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancelBtn" class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">取消</button>
+                    <button type="button" id="deleteBtn" class="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none hidden">刪除</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
     <script type="module">
@@ -396,9 +619,11 @@
             const tabTodo = document.getElementById('tab-todo');
             const tabTracking = document.getElementById('tab-tracking');
             const tabFeedback = document.getElementById('tab-feedback');
+            const tabGantt = document.getElementById('tab-gantt');
             const contentTodo = document.getElementById('content-todo');
             const contentTracking = document.getElementById('content-tracking');
             const contentFeedback = document.getElementById('content-feedback');
+            const contentGantt = document.getElementById('content-gantt');
             
             // 待辦事項
             const addItemForm = document.getElementById('addItemForm');
@@ -485,14 +710,14 @@
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
-                document.body.classList.remove('is-printing-list');
+                document.body.classList.remove('is-printing-list', 'is-printing-gantt');
                 renderEventItems();
             });
 
             // --- Tab Switching ---
             const switchTab = (activeTab) => {
-                const tabs = { todo: tabTodo, tracking: tabTracking, feedback: tabFeedback };
-                const contents = { todo: contentTodo, tracking: contentTracking, feedback: contentFeedback };
+                const tabs = { todo: tabTodo, tracking: tabTracking, feedback: tabFeedback, gantt: tabGantt };
+                const contents = { todo: contentTodo, tracking: contentTracking, feedback: contentFeedback, gantt: contentGantt };
                 const activeClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600';
                 const inactiveClasses = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
                 
@@ -510,7 +735,7 @@
             };
             
             // --- Firebase 設定 ---
-            const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.firebasestorage.app", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
+            const firebaseConfig = { apiKey: "AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q", authDomain: "sunyu-check.firebaseapp.com", projectId: "sunyu-check", storageBucket: "sunyu-check.appspot.com", messagingSenderId: "627211744361", appId: "1:627211744361:web:58bce4b5009f0c9d5bdef8" };
             const appId = "sunyu-check";
 
 
@@ -607,8 +832,8 @@
                         tr.innerHTML = `
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center space-x-4">
-                                  <div><input type="checkbox" class="h-4 w-4 edit-todo-completed" ${item.completed ? 'checked' : ''}><label class="ml-2 text-sm">已完成</label></div>
-                                  <div><input type="checkbox" class="h-4 w-4 edit-todo-handedOver" ${item.handedOver ? 'checked' : ''}><label class="ml-2 text-sm">已移交</label></div>
+                                    <div><input type="checkbox" class="h-4 w-4 edit-todo-completed" ${item.completed ? 'checked' : ''}><label class="ml-2 text-sm">已完成</label></div>
+                                    <div><input type="checkbox" class="h-4 w-4 edit-todo-handedOver" ${item.handedOver ? 'checked' : ''}><label class="ml-2 text-sm">已移交</label></div>
                                 </div>
                             </td>
                             <td class="px-4 py-4"><input class="edit-input edit-productionId" value="${item.productionId}"></td>
@@ -846,6 +1071,7 @@
             tabTodo.addEventListener('click', () => switchTab('todo'));
             tabTracking.addEventListener('click', () => switchTab('tracking'));
             tabFeedback.addEventListener('click', () => switchTab('feedback'));
+            tabGantt.addEventListener('click', () => switchTab('gantt'));
 
             // --- 待修改明細 (Todo) Section ---
             addItemForm.addEventListener('submit', (e) => {
@@ -1025,6 +1251,565 @@
             });
 
             feedbackFilterType.addEventListener('change', () => { currentPageFeedback = 1; renderFeedbackItems(); });
+
+            // =================================================================
+            // --- Gantt Chart Logic ---
+            // =================================================================
+            // DOM Elements
+            const taskGridHeader = document.getElementById('task-grid-header');
+            const taskListBody = document.getElementById('task-list-body');
+            const timelineHeader = document.getElementById('timeline-header');
+            const timelineBody = document.getElementById('timeline-body');
+            const ganttTaskGrid = document.getElementById('gantt-task-grid');
+            const ganttTimeline = document.getElementById('gantt-timeline');
+            const ganttContainer = document.getElementById('gantt-container');
+            const printBtn = document.getElementById('printBtn');
+            const currentDateEl = document.getElementById('current-date');
+            
+            // Modal Elements
+            const addTaskBtn = document.getElementById('addTaskBtn');
+            const taskModal = document.getElementById('taskModal');
+            const modalContent = document.getElementById('modal-content');
+            const modalTitle = document.getElementById('modalTitle');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const taskForm = document.getElementById('taskForm');
+            const taskIdInput = document.getElementById('taskId');
+            const taskNameInput = document.getElementById('taskName');
+            const taskAssigneeInput = document.getElementById('taskAssignee');
+            const taskStartInput = document.getElementById('taskStart');
+            const taskDurationInput = document.getElementById('taskDuration');
+            const taskProgressInput = document.getElementById('taskProgress');
+            const progressValue = document.getElementById('progressValue');
+            const taskParentSelect = document.getElementById('taskParent');
+
+            // Set current date in header
+            const ganttToday = new Date();
+            const year = ganttToday.getFullYear();
+            const month = String(ganttToday.getMonth() + 1).padStart(2, '0');
+            const day = String(ganttToday.getDate()).padStart(2, '0');
+            currentDateEl.textContent = `${year}-${month}-${day}`;
+
+            // Gantt settings
+            const dayWidth = 40; // width of a day in pixels
+            const columns = [
+                { label: 'WBS', width: 60 },
+                { label: '任務名稱', width: 180 },
+                { label: '工期', width: 90 },
+                { label: '開始日期', width: 100 },
+                { label: '結束日期', width: 100 },
+                { label: '人員', width: 80 },
+                { label: '進度', width: 50 }
+            ];
+
+            const parentColors = [
+                { bar: '#a5b4fc', progress: '#4f46e5' }, // Indigo
+                { bar: '#6ee7b7', progress: '#059669' }, // Emerald
+                { bar: '#fcd34d', progress: '#d97706' }, // Amber
+                { bar: '#f9a8d4', progress: '#be185d' }, // Pink
+                { bar: '#67e8f9', progress: '#0891b2' }, // Cyan
+            ];
+
+            // Data
+            let tasks = [
+                { id: 1, name: '專案啟動', start: '2025-09-01', duration: 1, progress: 100, parentId: null, assignee: '主管' },
+                { id: 2, name: '規劃階段', start: '2025-09-02', duration: 0, progress: 0, parentId: null, assignee: null },
+                { id: 3, name: '市場研究', start: '2025-09-02', duration: 5, progress: 90, parentId: 2, assignee: '分析師A' },
+                { id: 4, name: '制定規格', start: '2025-09-09', duration: 7, progress: 60, parentId: 2, assignee: '產品經理' },
+                { id: 5, name: '設計階段', start: '2025-09-12', duration: 0, progress: 0, parentId: null, assignee: null },
+                { id: 6, name: 'UI/UX 設計', start: '2025-09-16', duration: 8, progress: 50, parentId: 5, assignee: '設計師' },
+                { id: 7, name: '開發階段', start: '2025-09-22', duration: 0, progress: 0, parentId: null, assignee: null },
+                { id: 8, name: '前端開發', start: '2025-09-26', duration: 10, progress: 15, parentId: 7, assignee: '工程師B' },
+                { id: 9, name: '後端開發', start: '2025-09-26', duration: 15, progress: 5, parentId: 7, assignee: '工程師C' },
+                { id: 10, name: '測試階段', start: '2025-10-17', duration: 7, progress: 0, parentId: null, assignee: '測試員' },
+                { id: 11, name: '專案上線', start: '2025-10-28', duration: 1, progress: 0, parentId: null, assignee: '主管' },
+            ];
+            
+            // --- Date Utility Functions (with weekend skipping) ---
+            const parseDate = (dateStr) => {
+                const [year, month, day] = dateStr.split('-').map(Number);
+                return new Date(year, month - 1, day);
+            };
+
+            const formatDate = (date) => date.toISOString().split('T')[0];
+            
+            const getEndDate = (task) => {
+                const startStr = task.start;
+                const duration = task.duration;
+
+                if (duration <= 0) return startStr;
+                
+                let date = parseDate(startStr);
+                let workingDaysCounted = 0;
+                
+                while (workingDaysCounted < duration) {
+                    const dayOfWeek = date.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // It's a working day
+                        workingDaysCounted++;
+                    }
+                    if (workingDaysCounted < duration) {
+                        date.setDate(date.getDate() + 1);
+                    }
+                }
+                return formatDate(date);
+            };
+
+            const calculateWorkingDays = (startStr, endStr) => {
+                let count = 0;
+                const start = parseDate(startStr);
+                const end = parseDate(endStr);
+                let current = new Date(start);
+
+                if (start > end) return 0;
+
+                while (current <= end) {
+                    const dayOfWeek = current.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        count++;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+                return count;
+            };
+
+            const dateDiffInDays = (dateStr1, dateStr2) => {
+                const dt1 = parseDate(dateStr1);
+                const dt2 = parseDate(dateStr2);
+                return Math.floor((dt2 - dt1) / (1000 * 60 * 60 * 24));
+            };
+
+            function processTasks(tasksToProcess) {
+                const taskMap = new Map(tasksToProcess.map(t => [t.id, { ...t, children: [] }]));
+                
+                tasksToProcess.forEach(task => {
+                    if (task.parentId && taskMap.has(task.parentId)) {
+                        taskMap.get(task.parentId).children.push(taskMap.get(task.id));
+                    }
+                });
+
+                const processedTasks = Array.from(taskMap.values());
+
+                function updateParent(task) {
+                    if (task.children.length === 0) return;
+
+                    task.children.forEach(updateParent); // Post-order traversal
+
+                    let minStart = null;
+                    let maxEnd = null;
+                    let totalProgress = 0;
+                    let totalDuration = 0;
+
+                    task.children.forEach(child => {
+                        const childEnd = getEndDate(child);
+                        if (!minStart || child.start < minStart) {
+                            minStart = child.start;
+                        }
+                        if (!maxEnd || childEnd > maxEnd) {
+                            maxEnd = childEnd;
+                        }
+                        totalProgress += child.progress * child.duration;
+                        totalDuration += child.duration;
+                    });
+
+                    task.start = minStart;
+                    task.duration = calculateWorkingDays(minStart, maxEnd);
+                    task.progress = totalDuration > 0 ? Math.round(totalProgress / totalDuration) : 0;
+                }
+
+                processedTasks.filter(t => t.parentId === null).forEach(updateParent);
+                return processedTasks;
+            }
+
+            function createHeader() {
+                taskGridHeader.innerHTML = '';
+                columns.forEach((col, index) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'task-header-cell';
+                    cell.textContent = col.label;
+                    cell.style.width = `${col.width}px`;
+
+                    if (index < columns.length - 1) {
+                        const resizer = document.createElement('div');
+                        resizer.className = 'col-resizer';
+                        resizer.dataset.colIndex = index;
+                        cell.appendChild(resizer);
+                    }
+                    taskGridHeader.appendChild(cell);
+                });
+                updateSidebarWidth();
+            }
+
+            function updateSidebarWidth() {
+                const totalWidth = columns.reduce((sum, col) => sum + col.width, 0);
+                ganttContainer.style.setProperty('--sidebar-width', `${totalWidth}px`);
+            }
+            
+            function render() {
+                const processedTasksWithHierarchy = processTasks(tasks);
+                const displayTasks = [];
+
+                if (tasks.length === 0) {
+                    taskListBody.innerHTML = '<div class="p-4 text-center text-gray-500">尚無任務，請點擊右上角新增。</div>';
+                    timelineHeader.innerHTML = '';
+                    timelineBody.innerHTML = '';
+                    return;
+                }
+
+                let projectStart = processedTasksWithHierarchy[0].start;
+                let projectEnd = getEndDate(processedTasksWithHierarchy[0]);
+
+                processedTasksWithHierarchy.forEach(t => {
+                    const endDate = getEndDate(t);
+                    if (t.start < projectStart) projectStart = t.start;
+                    if (endDate > projectEnd) projectEnd = endDate;
+                });
+                
+                const totalDays = dateDiffInDays(projectStart, projectEnd) + 1;
+                
+                renderTimelineHeader(projectStart, totalDays);
+
+                taskListBody.innerHTML = '';
+                timelineBody.innerHTML = '';
+                
+                const rootTasks = processedTasksWithHierarchy.filter(t => t.parentId === null);
+                
+                let colorIndex = 0;
+                let wbsCounter = 1;
+
+                const processHierarchyForDisplay = (tasksToProcess, level, color, wbsPrefix = '') => {
+                    tasksToProcess.forEach((task, index) => {
+                        const currentWbs = wbsPrefix ? `${wbsPrefix}.${index + 1}` : `${wbsCounter}`;
+                        task.color = color;
+                        displayTasks.push({ task, level, wbs: currentWbs });
+                        if (task.children.length > 0) {
+                            processHierarchyForDisplay(task.children, level + 1, color, currentWbs);
+                        }
+                    });
+                    if (!wbsPrefix) {
+                        wbsCounter++;
+                    }
+                };
+
+                rootTasks.forEach(task => {
+                    const color = parentColors[colorIndex % parentColors.length];
+                    processHierarchyForDisplay([task], 0, color);
+                    colorIndex++;
+                });
+
+                timelineBody.style.height = `${displayTasks.length * 40}px`;
+                displayTasks.forEach((item, index) => {
+                    renderTaskRow(item.task, index, item.level, projectStart, item.wbs);
+                });
+            }
+
+            function renderTimelineHeader(projectStart, totalDays) {
+                timelineHeader.innerHTML = '';
+                const months = {};
+                const timelineWidth = totalDays * dayWidth;
+                timelineHeader.style.width = `${timelineWidth}px`;
+                
+                for (let i = 0; i < totalDays; i++) {
+                    const currentDate = parseDate(projectStart);
+                    currentDate.setDate(currentDate.getDate() + i);
+                    const month = currentDate.toLocaleString('zh-TW', { month: 'short', year: 'numeric' });
+                    if (!months[month]) {
+                        months[month] = { count: 0 };
+                    }
+                    months[month].count++;
+                }
+
+                const monthHeader = document.createElement('div');
+                monthHeader.className = 'flex h-1/2';
+                Object.keys(months).forEach(month => {
+                    const monthEl = document.createElement('div');
+                    monthEl.className = 'flex items-center justify-center border-r font-medium text-gray-600 text-sm';
+                    monthEl.style.width = `${months[month].count * dayWidth}px`;
+                    monthEl.textContent = month;
+                    monthHeader.appendChild(monthEl);
+                });
+
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'flex h-1/2';
+                for (let i = 0; i < totalDays; i++) {
+                    const currentDate = parseDate(projectStart);
+                    currentDate.setDate(currentDate.getDate() + i);
+                    const dayEl = document.createElement('div');
+                    dayEl.className = 'flex items-center justify-center border-r text-xs text-gray-500';
+                    dayEl.style.width = `${dayWidth}px`;
+                    dayEl.textContent = currentDate.getDate();
+                    if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+                        dayEl.classList.add('bg-gray-100');
+                    }
+                    dayHeader.appendChild(dayEl);
+                }
+
+                timelineHeader.appendChild(monthHeader);
+                timelineHeader.appendChild(dayHeader);
+            }
+
+            function renderTaskRow(task, index, level, projectStart, wbs) {
+                const isParent = task.children.length > 0;
+                const endDate = getEndDate(task);
+                
+                const taskRow = document.createElement('div');
+                taskRow.className = 'gantt-task-row';
+                taskRow.dataset.taskId = task.id;
+                if (isParent) {
+                    taskRow.classList.add('font-bold', 'bg-blue-50');
+                }
+
+                const rowData = [
+                    wbs,
+                    `${' '.repeat(level * 4)}${isParent ? '▼ ' : ''}${task.name}`,
+                    `${task.duration} 工作日`,
+                    task.start,
+                    endDate,
+                    task.assignee || '',
+                    `${task.progress}%`
+                ];
+                
+                rowData.forEach((data, i) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'task-cell';
+                    cell.textContent = data;
+                    cell.style.width = `${columns[i].width}px`;
+                     if (i === 1) { // Task name column
+                        cell.style.paddingLeft = `${level * 20 + 10}px`;
+                        cell.classList.add('truncate');
+                    }
+                    taskRow.appendChild(cell);
+                });
+
+                taskRow.addEventListener('click', () => openModal(task.id));
+                taskListBody.appendChild(taskRow);
+
+                const daysFromStart = dateDiffInDays(projectStart, task.start);
+                
+                const taskBar = document.createElement('div');
+                taskBar.className = 'task-bar';
+
+                taskBar.style.left = `${daysFromStart * dayWidth}px`;
+                taskBar.style.width = `${calculateWorkingDays(task.start, endDate) * dayWidth}px`;
+                
+                if (isParent) {
+                    taskBar.classList.add('parent-bar');
+                    taskBar.style.backgroundColor = task.color.progress;
+                    taskBar.style.top = `${index * 40 + 16}px`;
+
+                    const startCap = document.createElement('div');
+                    startCap.className = 'parent-cap';
+                    startCap.style.left = '0px';
+
+                    const endCap = document.createElement('div');
+                    endCap.className = 'parent-cap';
+                    endCap.style.right = '0px';
+                    
+                    taskBar.appendChild(startCap);
+                    taskBar.appendChild(endCap);
+                } else {
+                    const barColor = task.color.bar;
+                    const progressColor = task.color.progress;
+                    taskBar.style.backgroundColor = barColor;
+
+                    const progressFill = document.createElement('div');
+                    progressFill.className = 'task-progress-fill';
+                    progressFill.style.width = `${task.progress}%`;
+                    progressFill.style.backgroundColor = progressColor;
+
+                    const taskLabel = document.createElement('span');
+                    taskLabel.className = 'task-bar-label';
+                    taskLabel.textContent = task.assignee || '';
+
+                    taskBar.appendChild(progressFill);
+                    if (task.assignee) taskBar.appendChild(taskLabel);
+
+                    taskBar.style.top = `${index * 40 + 16}px`;
+                }
+                
+                timelineBody.appendChild(taskBar);
+            }
+            
+            // Modal Logic
+            function openModal(taskId = null) {
+                taskForm.reset();
+                deleteBtn.classList.add('hidden');
+                populateParentTaskOptions(taskId);
+
+                taskStartInput.disabled = false;
+                taskDurationInput.disabled = false;
+                taskProgressInput.disabled = false;
+
+                if (taskId) {
+                    const task = tasks.find(t => t.id === taskId);
+                    const children = tasks.filter(t => t.parentId === taskId);
+                    modalTitle.textContent = '編輯任務';
+                    taskIdInput.value = task.id;
+                    taskNameInput.value = task.name;
+                    taskAssigneeInput.value = task.assignee || '';
+                    taskStartInput.value = task.start;
+                    taskDurationInput.value = task.duration;
+                    taskProgressInput.value = task.progress;
+                    progressValue.textContent = `${task.progress}%`;
+                    taskParentSelect.value = task.parentId || "";
+                    deleteBtn.classList.remove('hidden');
+
+                    if(children.length > 0) {
+                        taskStartInput.disabled = true;
+                        taskDurationInput.disabled = true;
+                        taskProgressInput.disabled = true;
+                    }
+
+                } else {
+                    modalTitle.textContent = '新增任務';
+                    taskIdInput.value = '';
+                    progressValue.textContent = `0%`;
+                }
+                
+                taskModal.classList.remove('hidden');
+                taskModal.classList.add('flex');
+                setTimeout(() => {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                }, 10);
+            }
+            
+            function populateParentTaskOptions(currentTaskId) {
+                taskParentSelect.innerHTML = '<option value="">無</option>';
+                tasks.forEach(task => {
+                    if (task.id === currentTaskId) return;
+                    const childrenOfCurrent = tasks.filter(t => t.parentId === currentTaskId).map(t => t.id);
+                    if (childrenOfCurrent.includes(task.id)) return;
+                    
+                    const option = document.createElement('option');
+                    option.value = task.id;
+                    option.textContent = task.name;
+                    taskParentSelect.appendChild(option);
+                });
+            }
+
+
+            function closeGanttModal() {
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    taskModal.classList.add('hidden');
+                    taskModal.classList.remove('flex');
+                }, 200);
+            }
+
+            function saveTask() {
+                const id = parseInt(taskIdInput.value);
+                const parentId = taskParentSelect.value ? parseInt(taskParentSelect.value) : null;
+
+                const taskData = {
+                    name: taskNameInput.value,
+                    assignee: taskAssigneeInput.value,
+                    start: taskStartInput.value,
+                    duration: parseInt(taskDurationInput.value),
+                    progress: parseInt(taskProgressInput.value),
+                    parentId: parentId
+                };
+                
+                if (id) {
+                    const taskIndex = tasks.findIndex(t => t.id === id);
+                    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
+                } else {
+                    taskData.id = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+                    tasks.push(taskData);
+                }
+                
+                render();
+                closeGanttModal();
+            }
+
+            function deleteTask() {
+                const id = parseInt(taskIdInput.value);
+                const tasksToDelete = new Set([id]);
+                let changed = true;
+                while(changed) {
+                    changed = false;
+                    const currentSize = tasksToDelete.size;
+                    tasks.forEach(t => {
+                        if (t.parentId && tasksToDelete.has(t.parentId)) {
+                            tasksToDelete.add(t.id);
+                        }
+                    });
+                    if (tasksToDelete.size > currentSize) changed = true;
+                }
+
+                tasks = tasks.filter(t => !tasksToDelete.has(t.id));
+                render();
+                closeGanttModal();
+            }
+
+            // --- Event Listeners ---
+            addTaskBtn.addEventListener('click', () => openModal());
+            printBtn.addEventListener('click', () => {
+                document.body.classList.add('is-printing-gantt');
+                window.print()
+            });
+            cancelBtn.addEventListener('click', closeGanttModal);
+            taskModal.addEventListener('click', (e) => {
+                if (e.target === taskModal) closeGanttModal();
+            });
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveTask();
+            });
+            deleteBtn.addEventListener('click', deleteTask);
+
+            taskProgressInput.addEventListener('input', (e) => {
+                progressValue.textContent = `${e.target.value}%`;
+            });
+
+            // Sync Scrolling
+            ganttTimeline.addEventListener('scroll', () => {
+                ganttTaskGrid.scrollTop = ganttTimeline.scrollTop;
+            });
+            ganttTaskGrid.addEventListener('scroll', () => {
+                 ganttTimeline.scrollTop = ganttTaskGrid.scrollTop;
+            });
+            ganttTaskGrid.addEventListener('wheel', (e) => {
+                ganttTimeline.scrollTop += e.deltaY;
+                e.preventDefault();
+            });
+
+            // --- Column Resizing Logic ---
+            let resizingColIndex = -1;
+            let startX = 0;
+            let startWidth = 0;
+
+            taskGridHeader.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('col-resizer')) {
+                    resizingColIndex = parseInt(e.target.dataset.colIndex, 10);
+                    startX = e.clientX;
+                    startWidth = columns[resizingColIndex].width;
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                }
+            });
+
+            function handleMouseMove(e) {
+                if (resizingColIndex > -1) {
+                    const diffX = e.clientX - startX;
+                    const newWidth = startWidth + diffX;
+                    if (newWidth > 40) { // Minimum width
+                        columns[resizingColIndex].width = newWidth;
+                        updateSidebarWidth();
+                        // Re-render header and rows with new widths
+                        createHeader(); // Redraw header
+                        render(); // Redraw everything else
+                    }
+                }
+            }
+            
+            function handleMouseUp() {
+                resizingColIndex = -1;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+            
+            // Initial Setup
+            createHeader();
+            render();
         });
     </script>
 </body>
