@@ -1442,25 +1442,42 @@
                 return new Date(year, month - 1, day);
             };
 
-            const formatDate = (date) => date.toISOString().split('T')[0];
+            const formatDate = (date) => {
+                if (!date) return '';
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
             
             const getEndDate = (task) => {
                 const startStr = task.start;
                 const duration = task.duration;
 
                 if (!startStr) return null;
-                if (duration <= 0) return startStr;
+                const d = parseInt(duration, 10);
                 
                 let date = parseDate(startStr);
-                let workingDaysCounted = 0;
-                
-                while (workingDaysCounted < duration) {
-                    const dayOfWeek = date.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // It's a working day
-                        workingDaysCounted++;
-                    }
-                    if (workingDaysCounted < duration) {
+                // If duration is 1, end date is the start date (or next working day)
+                if (isNaN(d) || d <= 1) {
+                    while (date.getDay() === 0 || date.getDay() === 6) {
                         date.setDate(date.getDate() + 1);
+                    }
+                    return formatDate(date);
+                }
+                
+                // Adjust start date if it's on a weekend
+                while (date.getDay() === 0 || date.getDay() === 6) {
+                    date.setDate(date.getDate() + 1);
+                }
+
+                // We've accounted for the first day, so we need to find d-1 more working days
+                let workingDaysAdded = 1; 
+                while (workingDaysAdded < d) {
+                    date.setDate(date.getDate() + 1);
+                    const dayOfWeek = date.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        workingDaysAdded++;
                     }
                 }
                 return formatDate(date);
@@ -1573,7 +1590,7 @@
                     
                     // Find all tasks that are 100% complete
                     processedTasksWithHierarchy.forEach(task => {
-                        if (task.progress === 100) {
+                        if (parseInt(task.progress || 0, 10) === 100) {
                             hiddenIds.add(task.id);
                         }
                     });
@@ -2134,5 +2151,7 @@
     </script>
 </body>
 </html>
+
+
 
 
