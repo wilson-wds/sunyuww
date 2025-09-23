@@ -79,8 +79,8 @@
             box-sizing: border-box;
         }
         .task-header {
-             height: var(--timeline-header-height);
-             border-bottom: 2px solid var(--border-color);
+            height: var(--timeline-header-height);
+            border-bottom: 2px solid var(--border-color);
         }
         .task-header-cell, .task-cell {
             padding: 0.5rem;
@@ -179,36 +179,48 @@
         }
 
         @media print {
-             main.container {
+            main.container {
                 max-width: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
-            /* --- START: 優化後的列印專用樣式 (Original) --- */
+            /* --- START: General Print Styles --- */
             .print-hide {
                 display: none !important;
             }
-            body:not(.is-printing-gantt) .printable-modal-container {
+
+            /* --- START: Detail Modal Print Styles --- */
+            body.is-printing-detail > *:not(.printable-modal-container.is-printing) {
+                display: none !important;
+            }
+            body.is-printing-detail .printable-modal-container.is-printing {
                 display: block !important;
-                position: static;
+                position: static !important;
                 width: 100%;
                 height: auto;
                 background: transparent;
                 overflow: visible;
             }
-            body:not(.is-printing-gantt) .printable-content {
+            body.is-printing-detail .printable-content {
                 position: static;
                 width: 100%; margin: 0; padding: 1rem;
                 border: none; box-shadow: none; max-height: none; overflow: visible;
             }
-            body:not(.is-printing-gantt) #detailModal .printable-content { height: 98vh; }
-            body:not(.is-printing-gantt) #detailModal .printable-content > .flex-1.min-h-0.overflow-y-auto { overflow: visible; flex: 1; }
-            body:not(.is-printing-gantt) #detail-content { display: flex; flex-direction: column; height: 100%; }
-            body:not(.is-printing-gantt) #detail-image-container { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
-            body:not(.is-printing-gantt) #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
+            body.is-printing-detail #detailModal .printable-content { height: 98vh; }
+            body.is-printing-detail #detailModal .printable-content > .flex-1.min-h-0.overflow-y-auto { overflow: visible; flex: 1; }
+            body.is-printing-detail #detailModal #detail-content { display: flex; flex-direction: column; height: 100%; }
+            body.is-printing-detail #detailModal #detail-image-container { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+            body.is-printing-detail #detailModal #detail-image { page-break-inside: avoid; max-width: 100%; max-height: 100%; object-fit: contain; }
+
+            /* --- START: List Print Styles --- */
+            body.is-printing-list > *:not(main),
+            body.is-printing-list main > *:not(#content-tracking) {
+                display: none !important;
+            }
             body.is-printing-list #content-todo,
             body.is-printing-list #content-feedback,
-            body.is-printing-list #content-gantt {
+            body.is-printing-list #content-gantt,
+            body.is-printing-list .printable-modal-container {
                 display: none !important;
             }
             body.is-printing-list main,
@@ -243,7 +255,7 @@
             }
 
             /* --- Gantt Print Styles --- */
-             @page {
+            @page {
                 size: A4 portrait;
                 margin: 1cm;
             }
@@ -307,10 +319,10 @@
             body.is-printing-gantt .task-bar,
             body.is-printing-gantt .task-progress-fill,
             body.is-printing-gantt .parent-bar {
-                 -webkit-print-color-adjust: exact !important;
-                 print-color-adjust: exact !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-             body.is-printing-gantt.print-no-assignee .gantt-assignee-col {
+            body.is-printing-gantt.print-no-assignee .gantt-assignee-col {
                 display: none !important;
             }
             body.is-printing-gantt.print-no-progress-col .gantt-progress-col {
@@ -771,7 +783,11 @@
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
-                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'print-with-progress', 'print-no-assignee', 'print-no-progress-col');
+                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'is-printing-detail', 'print-with-progress', 'print-no-assignee', 'print-no-progress-col');
+                
+                if (detailModal) detailModal.classList.remove('is-printing');
+                if (eventDetailModal) eventDetailModal.classList.remove('is-printing');
+                
                 updateSidebarWidth(); // Reset sidebar width
                 // Re-render views
                 renderEventItems();
@@ -1143,12 +1159,14 @@
             imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.classList.add('hidden'); });
             closeDetailModal.addEventListener('click', () => detailModal.classList.add('hidden'));
             printDetail.addEventListener('click', () => {
-                detailModal.classList.add("printable-modal");
+                document.body.classList.add('is-printing-detail');
+                detailModal.classList.add('is-printing');
                 window.print();
-                detailModal.classList.remove("printable-modal");
             });
             closeEventDetailModal.addEventListener('click', () => eventDetailModal.classList.add('hidden'));
             printEventDetail.addEventListener('click', () => {
+                document.body.classList.add('is-printing-detail');
+                eventDetailModal.classList.add('is-printing');
                 window.print();
             });
 
@@ -1269,7 +1287,7 @@
                     editingEventId = null;
                     renderEventItems();
                 } else if (target.classList.contains('save-event')) {
-                     if (tr) {
+                    if (tr) {
                         try {
                             const updatedData = {
                                 matter: tr.querySelector('.edit-event-matter').value,
@@ -1959,8 +1977,8 @@
             
             function handleMouseUp() {
                  if (resizingColIndex > -1) {
-                     localStorage.setItem('ganttColumnConfig', JSON.stringify(columns));
-                }
+                      localStorage.setItem('ganttColumnConfig', JSON.stringify(columns));
+                 }
                 resizingColIndex = -1;
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
@@ -2012,8 +2030,8 @@
 
             taskListBody.addEventListener('dragleave', (e) => {
                  if (e.relatedTarget && e.relatedTarget.closest('#task-list-body') === taskListBody) {
-                    return;
-                }
+                     return;
+                 }
                 if (dropIndicator) {
                     dropIndicator.remove();
                     dropIndicator = null;
