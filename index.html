@@ -1177,7 +1177,11 @@
             tabTodo.addEventListener('click', () => switchTab('todo'));
             tabTracking.addEventListener('click', () => switchTab('tracking'));
             tabFeedback.addEventListener('click', () => switchTab('feedback'));
-            tabGantt.addEventListener('click', () => switchTab('gantt'));
+            tabGantt.addEventListener('click', () => {
+                switchTab('gantt');
+                // Give the browser a moment to render the tab content before scrolling
+                setTimeout(scrollToGanttToday, 50);
+            });
 
             // --- 待修改明細 (Todo) Section ---
             addItemForm.addEventListener('submit', (e) => {
@@ -1458,15 +1462,20 @@
                 const d = parseInt(duration, 10);
                 
                 let date = parseDate(startStr);
+                
+                if (isNaN(d) || d < 1) {
+                    return formatDate(date);
+                }
+
                 // If duration is 1, end date is the start date (or next working day)
-                if (isNaN(d) || d <= 1) {
+                if (d === 1) {
                     while (date.getDay() === 0 || date.getDay() === 6) {
                         date.setDate(date.getDate() + 1);
                     }
                     return formatDate(date);
                 }
                 
-                // Adjust start date if it's on a weekend
+                // Adjust start date if it's on a weekend for durations > 1
                 while (date.getDay() === 0 || date.getDay() === 6) {
                     date.setDate(date.getDate() + 1);
                 }
@@ -1476,7 +1485,7 @@
                 while (workingDaysAdded < d) {
                     date.setDate(date.getDate() + 1);
                     const dayOfWeek = date.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // It's a working day
                         workingDaysAdded++;
                     }
                 }
@@ -1638,9 +1647,7 @@
                     if (endDate > projectEnd) projectEnd = endDate;
                 });
                 
-                const totalDays = dateDiffInDays(projectStart, projectEnd) + 1;
-                
-                renderTimelineHeader(projectStart, totalDays);
+                renderTimelineHeader(projectStart, dateDiffInDays(projectStart, projectEnd) + 1);
 
                 taskListBody.innerHTML = '';
                 timelineBody.innerHTML = '';
@@ -1674,6 +1681,11 @@
                 displayTasks.forEach((item, index) => {
                     renderTaskRow(item.task, index, item.level, projectStart, item.wbs);
                 });
+                
+                // After rendering everything, add the today marker
+                if (!isForPrint) {
+                    addTodayMarker(projectStart, projectEnd);
+                }
             }
 
             function renderTimelineHeader(projectStart, totalDays) {
@@ -1976,6 +1988,70 @@
                     window.print();
                 }, 100);
             }
+            
+            // --- Gantt Today Marker and Scrolling ---
+            function addTodayMarker(projectStart, projectEnd) {
+                const todayStr = formatDate(new Date());
+
+                // Clear existing markers
+                const existingMarkers = ganttContainer.querySelectorAll('.gantt-today-marker');
+                existingMarkers.forEach(m => m.remove());
+
+                if (todayStr >= projectStart && todayStr <= projectEnd) {
+                    const daysFromStart = dateDiffInDays(projectStart, todayStr);
+
+                    // Body Marker (background)
+                    const bodyMarker = document.createElement('div');
+                    bodyMarker.className = 'gantt-today-marker';
+                    bodyMarker.style.position = 'absolute';
+                    bodyMarker.style.left = `${daysFromStart * dayWidth}px`;
+                    bodyMarker.style.top = '0px';
+                    bodyMarker.style.width = `${dayWidth}px`;
+                    bodyMarker.style.height = '100%';
+                    bodyMarker.style.backgroundColor = 'rgba(254, 249, 195, 0.6)'; // yellow-100 with opacity
+                    bodyMarker.style.zIndex = '0';
+                    bodyMarker.style.pointerEvents = 'none';
+                    timelineBody.prepend(bodyMarker);
+
+                    // Header Marker (line)
+                    const headerMarker = document.createElement('div');
+                    headerMarker.className = 'gantt-today-marker';
+                    headerMarker.style.position = 'absolute';
+                    headerMarker.style.left = `${daysFromStart * dayWidth}px`;
+                    headerMarker.style.top = '0';
+                    headerMarker.style.bottom = '0';
+                    headerMarker.style.width = '2px';
+                    headerMarker.style.backgroundColor = 'rgba(239, 68, 68, 0.7)'; // red-500 with opacity
+                    headerMarker.style.zIndex = '20';
+                    headerMarker.style.pointerEvents = 'none';
+                    headerMarker.title = `今天: ${todayStr}`;
+                    timelineHeader.appendChild(headerMarker);
+                }
+            }
+
+            function scrollToGanttToday() {
+                if (allGanttTasks.length === 0) return;
+
+                let projectStart = allGanttTasks.reduce((min, task) => {
+                    if (task.start && (!min || task.start < min)) return task.start;
+                    return min;
+                }, null);
+
+                if (!projectStart) return;
+                
+                const todayStr = formatDate(new Date());
+                
+                if (todayStr >= projectStart) {
+                    const daysFromStart = dateDiffInDays(projectStart, todayStr);
+                    const scrollPosition = daysFromStart * dayWidth;
+                    const timelineViewWidth = ganttTimeline.clientWidth;
+                    const centeredScrollPosition = scrollPosition + (dayWidth / 2) - (timelineViewWidth / 2);
+                    
+                    ganttTimeline.scrollLeft = centeredScrollPosition > 0 ? centeredScrollPosition : 0;
+                } else {
+                    ganttTimeline.scrollLeft = 0;
+                }
+            }
 
             // --- Event Listeners ---
             ganttAddTaskBtn.addEventListener('click', () => openGanttModal());
@@ -2151,7 +2227,4 @@
     </script>
 </body>
 </html>
-
-
-
 
