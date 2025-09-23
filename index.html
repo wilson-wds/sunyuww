@@ -148,6 +148,19 @@
             height: 16px;
             background-color: inherit;
         }
+         /* Drag and Drop Styles */
+        .gantt-task-row.dragging {
+            opacity: 0.5;
+            background: #f0f8ff;
+        }
+        .drop-indicator {
+            position: absolute;
+            height: 2px;
+            background-color: #3b82f6; /* blue-500 */
+            width: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
         
         /* Custom scrollbar */
         ::-webkit-scrollbar {
@@ -166,6 +179,11 @@
         }
 
         @media print {
+             main.container {
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
             /* --- START: 優化後的列印專用樣式 (Original) --- */
             .print-hide {
                 display: none !important;
@@ -208,7 +226,7 @@
                 width: 100%; border-collapse: collapse;
             }
             body.is-printing-list th, body.is-printing-list td {
-                border: 1px solid #3C3C3C; padding: 8px; font-size: 10pt; text-align: left;
+                border: 1px solid #6B7280; padding: 8px; font-size: 10pt; text-align: left;
             }
             body.is-printing-list thead {
                 background-color: #f9fafb; display: table-header-group;
@@ -540,7 +558,7 @@
                 <!-- Task Grid (Left Side) -->
                 <div id="gantt-task-grid" class="gantt-task-grid bg-white">
                     <div id="task-grid-header" class="task-header sticky top-0 bg-gray-50 z-10"></div>
-                    <div id="task-list-body"></div>
+                    <div id="task-list-body" class="relative"></div>
                 </div>
 
                 <!-- Timeline (Right Side) -->
@@ -653,9 +671,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // This function will run once the entire DOM is loaded and ready.
         document.addEventListener('DOMContentLoaded', () => {
             
             // --- DOM 元素 ---
@@ -1041,9 +1058,12 @@
             // =================================================================
             const listenForAllData = () => {
                 if (unsubscribeAllData) unsubscribeAllData();
-                 if (!appDataCollectionRef) return;
+                if (!appDataCollectionRef) return;
 
-                unsubscribeAllData = onSnapshot(appDataCollectionRef, (snapshot) => {
+                // Use a simpler query without composite ordering
+                const q = query(appDataCollectionRef); 
+
+                unsubscribeAllData = onSnapshot(q, (snapshot) => {
                     allTodoItems = [];
                     allEventItems = [];
                     allFeedbackItems = [];
@@ -1066,6 +1086,18 @@
                                 allTodoItems.push(data);
                                 break;
                         }
+                    });
+
+                    // Sort Gantt tasks client-side
+                    allGanttTasks.sort((a, b) => {
+                        const orderA = a.order ?? Infinity;
+                        const orderB = b.order ?? Infinity;
+                        if (orderA !== orderB) {
+                            return orderA - orderB;
+                        }
+                        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+                        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+                        return timeA - timeB;
                     });
                     
                     renderTodoItems();
@@ -1349,7 +1381,7 @@
             const ganttDayWidthScreen = 40;
             const ganttDayWidthPrint = 12; 
             let dayWidth = ganttDayWidthScreen; 
-            const columns = [
+            let columns = [
                 { label: 'WBS', width: 60 },
                 { label: '任務名稱', width: 180 },
                 { label: '工期', width: 90 },
@@ -1358,6 +1390,19 @@
                 { label: '人員', width: 80 },
                 { label: '進度', width: 50 }
             ];
+            // Load column config from localStorage
+            const savedColumns = localStorage.getItem('ganttColumnConfig');
+            if (savedColumns) {
+                try {
+                    const parsedColumns = JSON.parse(savedColumns);
+                    if (Array.isArray(parsedColumns) && parsedColumns.length === columns.length) {
+                         columns = parsedColumns;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse saved column config", e);
+                }
+            }
+
 
             const parentColors = [
                 { bar: '#a5b4fc', progress: '#4f46e5' }, // Indigo
@@ -1369,6 +1414,7 @@
             
             // --- Date Utility Functions (with weekend skipping) ---
             const parseDate = (dateStr) => {
+                if (!dateStr) return null;
                 const [year, month, day] = dateStr.split('-').map(Number);
                 return new Date(year, month - 1, day);
             };
@@ -1379,6 +1425,7 @@
                 const startStr = task.start;
                 const duration = task.duration;
 
+                if (!startStr) return null;
                 if (duration <= 0) return startStr;
                 
                 let date = parseDate(startStr);
@@ -1397,6 +1444,7 @@
             };
 
             const calculateWorkingDays = (startStr, endStr) => {
+                if (!startStr || !endStr) return 0;
                 let count = 0;
                 const start = parseDate(startStr);
                 const end = parseDate(endStr);
@@ -1415,6 +1463,7 @@
             };
 
             const dateDiffInDays = (dateStr1, dateStr2) => {
+                if (!dateStr1 || !dateStr2) return 0;
                 const dt1 = parseDate(dateStr1);
                 const dt2 = parseDate(dateStr2);
                 return Math.floor((dt2 - dt1) / (1000 * 60 * 60 * 24));
@@ -1500,10 +1549,11 @@
                     return;
                 }
 
-                let projectStart = processedTasksWithHierarchy[0].start;
-                let projectEnd = getEndDate(processedTasksWithHierarchy[0]);
+                let projectStart = processedTasksWithHierarchy[0]?.start || formatDate(new Date());
+                let projectEnd = getEndDate(processedTasksWithHierarchy[0]) || formatDate(new Date());
 
                 processedTasksWithHierarchy.forEach(t => {
+                    if (!t.start) return;
                     const endDate = getEndDate(t);
                     if (t.start < projectStart) projectStart = t.start;
                     if (endDate > projectEnd) projectEnd = endDate;
@@ -1527,7 +1577,7 @@
                         task.color = color;
                         displayTasks.push({ task, level, wbs: currentWbs });
                         if (task.children.length > 0) {
-                            processHierarchyForDisplay(task.children, level + 1, color, currentWbs);
+                            processHierarchyForDisplay(task.children.sort((a,b) => a.order - b.order), level + 1, color, currentWbs);
                         }
                     });
                     if (!wbsPrefix) {
@@ -1535,7 +1585,7 @@
                     }
                 };
 
-                rootTasks.forEach(task => {
+                rootTasks.sort((a,b) => a.order - b.order).forEach(task => {
                     const color = parentColors[colorIndex % parentColors.length];
                     processHierarchyForDisplay([task], 0, color);
                     colorIndex++;
@@ -1599,6 +1649,7 @@
                 const taskRow = document.createElement('div');
                 taskRow.className = 'gantt-task-row';
                 taskRow.dataset.taskId = task.id;
+                taskRow.draggable = true;
                 if (isParent) {
                     taskRow.classList.add('font-bold', 'bg-blue-50');
                 }
@@ -1723,9 +1774,18 @@
                 ganttTaskParentSelect.innerHTML = '<option value="">無</option>';
                 allGanttTasks.forEach(task => {
                     if (task.id === currentTaskId) return;
-                    const childrenOfCurrent = allGanttTasks.filter(t => t.parentId === currentTaskId).map(t => t.id);
-                    if (childrenOfCurrent.includes(task.id)) return;
-                    
+                    // Prevent circular dependencies - a task cannot be a child of its own descendant
+                    let isDescendant = false;
+                    let parent = allGanttTasks.find(t => t.id === task.id);
+                    while(parent) {
+                        if (parent.parentId === currentTaskId) {
+                            isDescendant = true;
+                            break;
+                        }
+                        parent = allGanttTasks.find(t => t.id === parent.parentId);
+                    }
+                    if(isDescendant) return;
+
                     const option = document.createElement('option');
                     option.value = task.id;
                     option.textContent = task.name;
@@ -1761,7 +1821,9 @@
                         const docRef = doc(appDataCollectionRef, id);
                         await updateDoc(docRef, taskData);
                     } else {
-                        await addDoc(appDataCollectionRef, { ...taskData, createdAt: serverTimestamp() });
+                         const siblings = allGanttTasks.filter(t => t.parentId === parentId);
+                         const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(t => t.order || 0)) : -1;
+                        await addDoc(appDataCollectionRef, { ...taskData, order: maxOrder + 1, createdAt: serverTimestamp() });
                     }
                     closeGanttModal();
                 } catch(error) {
@@ -1889,18 +1951,118 @@
                     if (newWidth > 40) { // Minimum width
                         columns[resizingColIndex].width = newWidth;
                         updateSidebarWidth();
-                        // Re-render header and rows with new widths
-                        createHeader(); // Redraw header
-                        renderGantt(); // Redraw everything else
+                        createHeader();
+                        renderGantt(); 
                     }
                 }
             }
             
             function handleMouseUp() {
+                 if (resizingColIndex > -1) {
+                     localStorage.setItem('ganttColumnConfig', JSON.stringify(columns));
+                }
                 resizingColIndex = -1;
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
             }
+            
+            // --- Drag and Drop Logic ---
+            let draggedId = null;
+            let dropIndicator = null;
+
+            taskListBody.addEventListener('dragstart', (e) => {
+                const row = e.target.closest('.gantt-task-row');
+                if (row) {
+                    draggedId = row.dataset.taskId;
+                    e.dataTransfer.setData('text/plain', draggedId);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setTimeout(() => row.classList.add('dragging'), 0);
+                }
+            });
+
+            taskListBody.addEventListener('dragend', (e) => {
+                const row = e.target.closest('.gantt-task-row');
+                if (row) {
+                    row.classList.remove('dragging');
+                }
+                if (dropIndicator) {
+                    dropIndicator.remove();
+                    dropIndicator = null;
+                }
+                draggedId = null;
+            });
+
+            taskListBody.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const targetRow = e.target.closest('.gantt-task-row');
+                if (!targetRow || targetRow.dataset.taskId === draggedId) return;
+                
+                if (!dropIndicator) {
+                    dropIndicator = document.createElement('div');
+                    dropIndicator.className = 'drop-indicator';
+                    taskListBody.appendChild(dropIndicator);
+                }
+                
+                const rect = targetRow.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top;
+                const isAfter = offsetY > rect.height / 2;
+                
+                dropIndicator.style.top = isAfter ? `${targetRow.offsetTop + rect.height}px` : `${targetRow.offsetTop}px`;
+            });
+
+            taskListBody.addEventListener('dragleave', (e) => {
+                 if (e.relatedTarget && e.relatedTarget.closest('#task-list-body') === taskListBody) {
+                    return;
+                }
+                if (dropIndicator) {
+                    dropIndicator.remove();
+                    dropIndicator = null;
+                }
+            });
+
+            taskListBody.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                if (dropIndicator) {
+                    dropIndicator.remove();
+                    dropIndicator = null;
+                }
+                const targetRow = e.target.closest('.gantt-task-row');
+                if (!targetRow || !draggedId || targetRow.dataset.taskId === draggedId) return;
+
+                const draggedTask = allGanttTasks.find(t => t.id === draggedId);
+                const targetTask = allGanttTasks.find(t => t.id === targetRow.dataset.taskId);
+
+                if (!draggedTask || !targetTask || draggedTask.parentId !== targetTask.parentId) {
+                    showNotification('任務只能在相同的父任務下進行排序。');
+                    return;
+                }
+                
+                const siblings = allGanttTasks
+                    .filter(t => t.parentId === draggedTask.parentId)
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                const draggedIndex = siblings.findIndex(t => t.id === draggedId);
+                siblings.splice(draggedIndex, 1);
+
+                const targetIndex = siblings.findIndex(t => t.id === targetTask.id);
+                const rect = targetRow.getBoundingClientRect();
+                const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+
+                siblings.splice(isAfter ? targetIndex + 1 : targetIndex, 0, draggedTask);
+
+                try {
+                    const batch = writeBatch(db);
+                    siblings.forEach((task, index) => {
+                        const docRef = doc(appDataCollectionRef, task.id);
+                        batch.update(docRef, { order: index });
+                    });
+                    await batch.commit();
+                } catch(error) {
+                    showNotification(`任務排序失敗: ${error.message}`);
+                }
+                
+                draggedId = null;
+            });
             
             // Initial Setup
             createHeader();
