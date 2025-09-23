@@ -1568,11 +1568,11 @@
 
                 // If hide-completed is checked, filter out tasks that are 100% complete and all their descendants
                 if (hideCompletedTasksToggle && hideCompletedTasksToggle.checked && !isForPrint) {
-                    const taskMap = new Map(tasksToRender.map(t => [t.id, t]));
+                    const taskMap = new Map(processedTasksWithHierarchy.map(t => [t.id, t]));
                     const hiddenIds = new Set();
                     
                     // Find all tasks that are 100% complete
-                    tasksToRender.forEach(task => {
+                    processedTasksWithHierarchy.forEach(task => {
                         if (task.progress === 100) {
                             hiddenIds.add(task.id);
                         }
@@ -1584,13 +1584,22 @@
                         while (queue.length > 0) {
                             const current = queue.shift();
                             hiddenIds.add(current.id);
-                            if (current.children.length > 0) {
+                            if (current.children && current.children.length > 0) {
                                 queue.push(...current.children);
                             }
                         }
                     });
 
-                    tasksToRender = tasksToRender.filter(t => !hiddenIds.has(t.id));
+                    tasksToRender = processedTasksWithHierarchy.filter(t => !hiddenIds.has(t.id));
+
+                    // Rebuild the hierarchy for the *visible* tasks to ensure children arrays are correct
+                    const visibleTaskMap = new Map(tasksToRender.map(t => [t.id, t]));
+                    tasksToRender.forEach(t => { t.children = []; }); // Reset children
+                    tasksToRender.forEach(t => {
+                        if (t.parentId && visibleTaskMap.has(t.parentId)) {
+                            visibleTaskMap.get(t.parentId).children.push(t);
+                        }
+                    });
                 }
 
                 const displayTasks = [];
@@ -2125,4 +2134,5 @@
     </script>
 </body>
 </html>
+
 
