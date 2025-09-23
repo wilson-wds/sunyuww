@@ -292,6 +292,12 @@
                  -webkit-print-color-adjust: exact !important;
                  print-color-adjust: exact !important;
             }
+             body.is-printing-gantt.print-no-assignee .gantt-assignee-col {
+                display: none !important;
+            }
+            body.is-printing-gantt.print-no-progress-col .gantt-progress-col {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -512,6 +518,14 @@
                         <input type="checkbox" id="printProgressToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="printProgressToggle" class="text-sm font-medium text-gray-700">列印進度條</label>
                     </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="printAssigneeToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="printAssigneeToggle" class="text-sm font-medium text-gray-700">列印人員</label>
+                    </div>
+                     <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="printProgressColumnToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="printProgressColumnToggle" class="text-sm font-medium text-gray-700">列印進度</label>
+                    </div>
                     <button id="ganttPrintBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
                         列印
                     </button>
@@ -639,7 +653,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // This function will run once the entire DOM is loaded and ready.
         document.addEventListener('DOMContentLoaded', () => {
@@ -716,7 +730,7 @@
             const detailImage = document.getElementById('detail-image');
 
             // --- 狀態變數 ---
-            let allTodoItems = [], allEventItems = [], allFeedbackItems = [];
+            let allTodoItems = [], allEventItems = [], allFeedbackItems = [], allGanttTasks = [];
             let unsubscribeAllData = null;
             let confirmCallback = null;
             let editingItemId = null;
@@ -740,7 +754,8 @@
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
-                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'print-with-progress');
+                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'print-with-progress', 'print-no-assignee', 'print-no-progress-col');
+                updateSidebarWidth(); // Reset sidebar width
                 // Re-render views
                 renderEventItems();
                 renderGantt(false); 
@@ -1032,6 +1047,7 @@
                     allTodoItems = [];
                     allEventItems = [];
                     allFeedbackItems = [];
+                    allGanttTasks = [];
 
                     snapshot.docs.forEach(doc => {
                         const data = { id: doc.id, ...doc.data() };
@@ -1041,6 +1057,9 @@
                                 break;
                             case 'feedback':
                                 allFeedbackItems.push(data);
+                                break;
+                            case 'gantt':
+                                allGanttTasks.push(data);
                                 break;
                             case 'todo':
                             default:
@@ -1052,6 +1071,7 @@
                     renderTodoItems();
                     renderEventItems();
                     renderFeedbackItems();
+                    renderGantt();
                 });
             };
 
@@ -1298,6 +1318,8 @@
             const ganttPrintBtn = document.getElementById('ganttPrintBtn');
             const ganttCurrentDateEl = document.getElementById('gantt-current-date');
             const printProgressToggle = document.getElementById('printProgressToggle');
+            const printAssigneeToggle = document.getElementById('printAssigneeToggle');
+            const printProgressColumnToggle = document.getElementById('printProgressColumnToggle');
             
             // Modal Elements
             const ganttAddTaskBtn = document.getElementById('ganttAddTaskBtn');
@@ -1343,21 +1365,6 @@
                 { bar: '#fcd34d', progress: '#d97706' }, // Amber
                 { bar: '#f9a8d4', progress: '#be185d' }, // Pink
                 { bar: '#67e8f9', progress: '#0891b2' }, // Cyan
-            ];
-
-            // Data
-            let tasks = [
-                { id: 1, name: '專案啟動', start: '2025-09-01', duration: 1, progress: 100, parentId: null, assignee: '主管' },
-                { id: 2, name: '規劃階段', start: '2025-09-02', duration: 0, progress: 0, parentId: null, assignee: null },
-                { id: 3, name: '市場研究', start: '2025-09-02', duration: 5, progress: 90, parentId: 2, assignee: '分析師A' },
-                { id: 4, name: '制定規格', start: '2025-09-09', duration: 7, progress: 60, parentId: 2, assignee: '產品經理' },
-                { id: 5, name: '設計階段', start: '2025-09-12', duration: 0, progress: 0, parentId: null, assignee: null },
-                { id: 6, name: 'UI/UX 設計', start: '2025-09-16', duration: 8, progress: 50, parentId: 5, assignee: '設計師' },
-                { id: 7, name: '開發階段', start: '2025-09-22', duration: 0, progress: 0, parentId: null, assignee: null },
-                { id: 8, name: '前端開發', start: '2025-09-26', duration: 10, progress: 15, parentId: 7, assignee: '工程師B' },
-                { id: 9, name: '後端開發', start: '2025-09-26', duration: 15, progress: 5, parentId: 7, assignee: '工程師C' },
-                { id: 10, name: '測試階段', start: '2025-10-17', duration: 7, progress: 0, parentId: null, assignee: '測試員' },
-                { id: 11, name: '專案上線', start: '2025-10-28', duration: 1, progress: 0, parentId: null, assignee: '主管' },
             ];
             
             // --- Date Utility Functions (with weekend skipping) ---
@@ -1460,6 +1467,8 @@
                 columns.forEach((col, index) => {
                     const cell = document.createElement('div');
                     cell.className = 'task-header-cell';
+                    if (index === 5) cell.classList.add('gantt-assignee-col');
+                    if (index === 6) cell.classList.add('gantt-progress-col');
                     cell.textContent = col.label;
                     cell.style.width = `${col.width}px`;
 
@@ -1481,10 +1490,10 @@
             
             function renderGantt(isForPrint = false) {
                 dayWidth = isForPrint ? ganttDayWidthPrint : ganttDayWidthScreen;
-                const processedTasksWithHierarchy = processTasks(tasks);
+                const processedTasksWithHierarchy = processTasks(allGanttTasks);
                 const displayTasks = [];
 
-                if (tasks.length === 0) {
+                if (allGanttTasks.length === 0) {
                     taskListBody.innerHTML = '<div class="p-4 text-center text-gray-500">尚無任務，請點擊右上角新增。</div>';
                     timelineHeader.innerHTML = '';
                     timelineBody.innerHTML = '';
@@ -1607,6 +1616,8 @@
                 rowData.forEach((data, i) => {
                     const cell = document.createElement('div');
                     cell.className = 'task-cell';
+                    if (i === 5) cell.classList.add('gantt-assignee-col');
+                    if (i === 6) cell.classList.add('gantt-progress-col');
                     cell.textContent = data;
                     cell.style.width = `${columns[i].width}px`;
                      if (i === 1) { // Task name column
@@ -1616,7 +1627,7 @@
                     taskRow.appendChild(cell);
                 });
 
-                taskRow.addEventListener('click', () => openModal(task.id));
+                taskRow.addEventListener('click', () => openGanttModal(task.id));
                 taskListBody.appendChild(taskRow);
 
                 const daysFromStart = dateDiffInDays(projectStart, task.start);
@@ -1666,7 +1677,7 @@
             }
             
             // Modal Logic
-            function openModal(taskId = null) {
+            function openGanttModal(taskId = null) {
                 ganttTaskForm.reset();
                 ganttDeleteBtn.classList.add('hidden');
                 populateParentTaskOptions(taskId);
@@ -1676,8 +1687,8 @@
                 ganttTaskProgressInput.disabled = false;
 
                 if (taskId) {
-                    const task = tasks.find(t => t.id === taskId);
-                    const children = tasks.filter(t => t.parentId === taskId);
+                    const task = allGanttTasks.find(t => t.id === taskId);
+                    const children = allGanttTasks.filter(t => t.parentId === taskId);
                     ganttModalTitle.textContent = '編輯任務';
                     ganttTaskIdInput.value = task.id;
                     ganttTaskNameInput.value = task.name;
@@ -1710,9 +1721,9 @@
             
             function populateParentTaskOptions(currentTaskId) {
                 ganttTaskParentSelect.innerHTML = '<option value="">無</option>';
-                tasks.forEach(task => {
+                allGanttTasks.forEach(task => {
                     if (task.id === currentTaskId) return;
-                    const childrenOfCurrent = tasks.filter(t => t.parentId === currentTaskId).map(t => t.id);
+                    const childrenOfCurrent = allGanttTasks.filter(t => t.parentId === currentTaskId).map(t => t.id);
                     if (childrenOfCurrent.includes(task.id)) return;
                     
                     const option = document.createElement('option');
@@ -1731,11 +1742,12 @@
                 }, 200);
             }
 
-            function saveTask() {
-                const id = parseInt(ganttTaskIdInput.value);
-                const parentId = ganttTaskParentSelect.value ? parseInt(ganttTaskParentSelect.value) : null;
+            async function saveGanttTask() {
+                const id = ganttTaskIdInput.value;
+                const parentId = ganttTaskParentSelect.value ? ganttTaskParentSelect.value : null;
 
                 const taskData = {
+                    type: 'gantt',
                     name: ganttTaskNameInput.value,
                     assignee: ganttTaskAssigneeInput.value,
                     start: ganttTaskStartInput.value,
@@ -1744,36 +1756,47 @@
                     parentId: parentId
                 };
                 
-                if (id) {
-                    const taskIndex = tasks.findIndex(t => t.id === id);
-                    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
-                } else {
-                    taskData.id = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-                    tasks.push(taskData);
+                try {
+                    if (id) {
+                        const docRef = doc(appDataCollectionRef, id);
+                        await updateDoc(docRef, taskData);
+                    } else {
+                        await addDoc(appDataCollectionRef, { ...taskData, createdAt: serverTimestamp() });
+                    }
+                    closeGanttModal();
+                } catch(error) {
+                    showNotification(`儲存任務失敗: ${error.message}`);
                 }
-                
-                renderGantt();
-                closeGanttModal();
             }
 
-            function deleteTask() {
-                const id = parseInt(ganttTaskIdInput.value);
+            async function deleteGanttTask() {
+                const id = ganttTaskIdInput.value;
+                if (!id) return;
+                
                 const tasksToDelete = new Set([id]);
                 let changed = true;
                 while(changed) {
                     changed = false;
                     const currentSize = tasksToDelete.size;
-                    tasks.forEach(t => {
+                    allGanttTasks.forEach(t => {
                         if (t.parentId && tasksToDelete.has(t.parentId)) {
                             tasksToDelete.add(t.id);
                         }
                     });
                     if (tasksToDelete.size > currentSize) changed = true;
                 }
-
-                tasks = tasks.filter(t => !tasksToDelete.has(t.id));
-                renderGantt();
-                closeGanttModal();
+                
+                try {
+                    const batch = writeBatch(db);
+                    tasksToDelete.forEach(taskId => {
+                        const docRef = doc(appDataCollectionRef, taskId);
+                        batch.delete(docRef);
+                    });
+                    await batch.commit();
+                    closeGanttModal();
+                } catch(error) {
+                    showNotification(`刪除任務失敗: ${error.message}`);
+                }
             }
             
             function prepareAndPrintGantt() {
@@ -1781,9 +1804,29 @@
                 const today = new Date();
                 ganttPrintDate.textContent = `列印日期：${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
                 
+                const printAssignee = printAssigneeToggle.checked;
+                const printProgressCol = printProgressColumnToggle.checked;
+
                 if (printProgressToggle.checked) {
                     document.body.classList.add('print-with-progress');
                 }
+                if (!printAssignee) {
+                    document.body.classList.add('print-no-assignee');
+                }
+                if (!printProgressCol) {
+                    document.body.classList.add('print-no-progress-col');
+                }
+
+                let printSidebarWidth = 0;
+                columns.forEach((col, index) => {
+                    if ((index === 5 && !printAssignee) || (index === 6 && !printProgressCol)) {
+                        // Do not add width of hidden columns
+                    } else {
+                        printSidebarWidth += col.width;
+                    }
+                });
+                ganttContainer.style.setProperty('--sidebar-width', `${printSidebarWidth}px`);
+                
                 document.body.classList.add('is-printing-gantt');
 
                 renderGantt(true);
@@ -1794,7 +1837,7 @@
             }
 
             // --- Event Listeners ---
-            ganttAddTaskBtn.addEventListener('click', () => openModal());
+            ganttAddTaskBtn.addEventListener('click', () => openGanttModal());
             
             ganttPrintBtn.addEventListener('click', prepareAndPrintGantt);
 
@@ -1804,9 +1847,9 @@
             });
             ganttTaskForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                saveTask();
+                saveGanttTask();
             });
-            ganttDeleteBtn.addEventListener('click', deleteTask);
+            ganttDeleteBtn.addEventListener('click', deleteGanttTask);
 
             ganttTaskProgressInput.addEventListener('input', (e) => {
                 ganttProgressValue.textContent = `${e.target.value}%`;
