@@ -556,6 +556,10 @@
                         <input type="checkbox" id="printProgressColumnToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="printProgressColumnToggle" class="text-sm font-medium text-gray-700">列印進度</label>
                     </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="hideCompletedTasksToggle" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="hideCompletedTasksToggle" class="text-sm font-medium text-gray-700">隱藏已完成</label>
+                    </div>
                     <button id="ganttPrintBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105">
                         列印
                     </button>
@@ -1370,6 +1374,7 @@
             const printProgressToggle = document.getElementById('printProgressToggle');
             const printAssigneeToggle = document.getElementById('printAssigneeToggle');
             const printProgressColumnToggle = document.getElementById('printProgressColumnToggle');
+            const hideCompletedTasksToggle = document.getElementById('hideCompletedTasksToggle');
             
             // Modal Elements
             const ganttAddTaskBtn = document.getElementById('ganttAddTaskBtn');
@@ -1558,19 +1563,49 @@
             function renderGantt(isForPrint = false) {
                 dayWidth = isForPrint ? ganttDayWidthPrint : ganttDayWidthScreen;
                 const processedTasksWithHierarchy = processTasks(allGanttTasks);
+                
+                let tasksToRender = [...processedTasksWithHierarchy];
+
+                // If hide-completed is checked, filter out tasks that are 100% complete and all their descendants
+                if (hideCompletedTasksToggle && hideCompletedTasksToggle.checked && !isForPrint) {
+                    const taskMap = new Map(tasksToRender.map(t => [t.id, t]));
+                    const hiddenIds = new Set();
+                    
+                    // Find all tasks that are 100% complete
+                    tasksToRender.forEach(task => {
+                        if (task.progress === 100) {
+                            hiddenIds.add(task.id);
+                        }
+                    });
+
+                    // For each hidden task, also hide all its descendants
+                    hiddenIds.forEach(id => {
+                        const queue = [...(taskMap.get(id)?.children || [])];
+                        while (queue.length > 0) {
+                            const current = queue.shift();
+                            hiddenIds.add(current.id);
+                            if (current.children.length > 0) {
+                                queue.push(...current.children);
+                            }
+                        }
+                    });
+
+                    tasksToRender = tasksToRender.filter(t => !hiddenIds.has(t.id));
+                }
+
                 const displayTasks = [];
 
-                if (allGanttTasks.length === 0) {
-                    taskListBody.innerHTML = '<div class="p-4 text-center text-gray-500">尚無任務，請點擊右上角新增。</div>';
+                if (tasksToRender.length === 0) {
+                    taskListBody.innerHTML = '<div class="p-4 text-center text-gray-500">尚無任務，或所有任務皆已完成並隱藏。</div>';
                     timelineHeader.innerHTML = '';
                     timelineBody.innerHTML = '';
                     return;
                 }
 
-                let projectStart = processedTasksWithHierarchy[0]?.start || formatDate(new Date());
-                let projectEnd = getEndDate(processedTasksWithHierarchy[0]) || formatDate(new Date());
+                let projectStart = tasksToRender[0]?.start || formatDate(new Date());
+                let projectEnd = getEndDate(tasksToRender[0]) || formatDate(new Date());
 
-                processedTasksWithHierarchy.forEach(t => {
+                tasksToRender.forEach(t => {
                     if (!t.start) return;
                     const endDate = getEndDate(t);
                     if (t.start < projectStart) projectStart = t.start;
@@ -1584,7 +1619,7 @@
                 taskListBody.innerHTML = '';
                 timelineBody.innerHTML = '';
                 
-                const rootTasks = processedTasksWithHierarchy.filter(t => t.parentId === null);
+                const rootTasks = tasksToRender.filter(t => t.parentId === null);
                 
                 let colorIndex = 0;
                 let wbsCounter = 1;
@@ -1918,6 +1953,7 @@
 
             // --- Event Listeners ---
             ganttAddTaskBtn.addEventListener('click', () => openGanttModal());
+            hideCompletedTasksToggle.addEventListener('change', () => renderGantt());
             
             ganttPrintBtn.addEventListener('click', prepareAndPrintGantt);
 
@@ -2089,7 +2125,4 @@
     </script>
 </body>
 </html>
-
-
-
 
