@@ -2032,25 +2032,28 @@
             function scrollToGanttToday() {
                 if (allGanttTasks.length === 0) return;
 
-                let projectStart = allGanttTasks.reduce((min, task) => {
-                    if (task.start && (!min || task.start < min)) return task.start;
-                    return min;
-                }, null);
+                let projectStart = null;
+                let latestEnd = null;
 
-                if (!projectStart) return;
+                allGanttTasks.forEach(task => {
+                    if (task.start && (!projectStart || task.start < projectStart)) {
+                        projectStart = task.start;
+                    }
+                    const endDate = getEndDate(task);
+                    if (endDate && (!latestEnd || endDate > latestEnd)) {
+                        latestEnd = endDate;
+                    }
+                });
+
+
+                if (!projectStart || !latestEnd) return;
                 
-                const todayStr = formatDate(new Date());
+                const daysFromStart = dateDiffInDays(projectStart, latestEnd);
+                const scrollPosition = daysFromStart * dayWidth;
+                const timelineViewWidth = ganttTimeline.clientWidth;
+                const centeredScrollPosition = scrollPosition + (dayWidth / 2) - (timelineViewWidth / 2);
                 
-                if (todayStr >= projectStart) {
-                    const daysFromStart = dateDiffInDays(projectStart, todayStr);
-                    const scrollPosition = daysFromStart * dayWidth;
-                    const timelineViewWidth = ganttTimeline.clientWidth;
-                    const centeredScrollPosition = scrollPosition + (dayWidth / 2) - (timelineViewWidth / 2);
-                    
-                    ganttTimeline.scrollLeft = centeredScrollPosition > 0 ? centeredScrollPosition : 0;
-                } else {
-                    ganttTimeline.scrollLeft = 0;
-                }
+                ganttTimeline.scrollLeft = centeredScrollPosition > 0 ? centeredScrollPosition : 0;
             }
 
             // --- Event Listeners ---
@@ -2227,4 +2230,5 @@
     </script>
 </body>
 </html>
+
 
