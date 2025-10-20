@@ -1650,7 +1650,7 @@
                 let tasksToRender = [...processedTasksWithHierarchy];
 
                 // If hide-completed is checked, filter out tasks that are 100% complete and all their descendants
-                if (hideCompletedTasksToggle && hideCompletedTasksToggle.checked && !isForPrint) {
+                if (hideCompletedTasksToggle && hideCompletedTasksToggle.checked) {
                     const taskMap = new Map(processedTasksWithHierarchy.map(t => [t.id, t]));
                     const hiddenIds = new Set();
                     
@@ -2292,4 +2292,5 @@
     </script>
 </body>
 </html>
+
 
