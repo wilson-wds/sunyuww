@@ -74,12 +74,13 @@
         }
         .gantt-task-row, .task-header {
             display: flex;
-            height: var(--row-height);
+            min-height: var(--row-height);
             border-bottom: 1px solid var(--border-color);
             box-sizing: border-box;
         }
         .task-header {
             height: var(--timeline-header-height);
+            min-height: var(--timeline-header-height);
             border-bottom: 2px solid var(--border-color);
         }
         .task-header-cell, .task-cell {
@@ -92,6 +93,15 @@
             text-overflow: ellipsis;
             box-sizing: border-box;
             flex-shrink: 0;
+        }
+        .task-cell.gantt-remarks-col {
+            white-space: pre-wrap;
+            word-break: break-word;
+            align-items: flex-start;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            font-size: 0.75rem; /* text-xs */
+            color: #6b7280; /* gray-500 */
         }
         .task-header-cell:last-child, .task-cell:last-child {
             border-right: none;
@@ -1749,10 +1759,27 @@
                     colorIndex++;
                 });
 
-                timelineBody.style.height = `${displayTasks.length * 40}px`;
+                const taskElements = [];
+                const taskListFragment = document.createDocumentFragment();
+                const timelineFragment = document.createDocumentFragment();
+        
                 displayTasks.forEach((item, index) => {
-                    renderTaskRow(item.task, index, item.level, projectStart, item.wbs);
+                    const { rowEl, barEl } = renderTaskRow(item.task, index, item.level, projectStart, item.wbs);
+                    taskListFragment.appendChild(rowEl);
+                    timelineFragment.appendChild(barEl);
+                    taskElements.push({ rowEl, barEl });
                 });
+
+                taskListBody.appendChild(taskListFragment);
+                timelineBody.appendChild(timelineFragment);
+
+                taskElements.forEach(({ rowEl, barEl }) => {
+                    const barTop = rowEl.offsetTop + (rowEl.offsetHeight - 8) / 2; // Center the 8px bar
+                    barEl.style.top = `${barTop}px`;
+                });
+
+                timelineBody.style.height = `${taskListBody.scrollHeight}px`;
+                
                 
                 // After rendering everything, add the today marker
                 if (!isForPrint) {
@@ -1842,19 +1869,18 @@
                         cell.title = data;
                     }
                     if (i === 7) { // Remarks column
-                        cell.classList.add('truncate');
                         cell.title = data;
                     }
                     taskRow.appendChild(cell);
                 });
 
                 taskRow.addEventListener('click', () => openGanttModal(task.id));
-                taskListBody.appendChild(taskRow);
 
                 const daysFromStart = dateDiffInDays(projectStart, task.start);
                 
                 const taskBar = document.createElement('div');
                 taskBar.className = 'task-bar';
+                taskBar.dataset.taskId = task.id;
 
                 taskBar.style.left = `${daysFromStart * dayWidth}px`;
                 taskBar.style.width = `${calculateWorkingDays(task.start, endDate) * dayWidth}px`;
@@ -1862,7 +1888,6 @@
                 if (isParent) {
                     taskBar.classList.add('parent-bar');
                     taskBar.style.backgroundColor = task.color.progress;
-                    taskBar.style.top = `${index * 40 + 16}px`;
 
                     const startCap = document.createElement('div');
                     startCap.className = 'parent-cap';
@@ -1890,11 +1915,9 @@
 
                     taskBar.appendChild(progressFill);
                     if (task.assignee) taskBar.appendChild(taskLabel);
-
-                    taskBar.style.top = `${index * 40 + 16}px`;
                 }
                 
-                timelineBody.appendChild(taskBar);
+                return { rowEl: taskRow, barEl: taskBar };
             }
             
             // Modal Logic
@@ -2320,4 +2343,5 @@
     </script>
 </body>
 </html>
+
 
