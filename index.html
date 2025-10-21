@@ -328,6 +328,9 @@
             body.is-printing-gantt.print-no-progress-col .gantt-progress-col {
                 display: none !important;
             }
+            body.is-printing-gantt.print-no-remarks .gantt-remarks-col {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -557,6 +560,10 @@
                         <label for="printProgressColumnToggle" class="text-sm font-medium text-gray-700">列印進度</label>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="printRemarksToggle" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="printRemarksToggle" class="text-sm font-medium text-gray-700">列印備註</label>
+                    </div>
+                    <div class="flex items-center space-x-2">
                         <input type="checkbox" id="hideCompletedTasksToggle" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="hideCompletedTasksToggle" class="text-sm font-medium text-gray-700">隱藏已完成</label>
                     </div>
@@ -671,6 +678,10 @@
                     <label for="ganttTaskProgress" class="block text-sm font-medium text-gray-700 mb-1">進度 (%)</label>
                     <input type="range" id="ganttTaskProgress" min="0" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     <span id="ganttProgressValue" class="text-sm text-gray-600">0%</span>
+                </div>
+                <div class="mb-4">
+                    <label for="ganttTaskRemarks" class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                    <textarea id="ganttTaskRemarks" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
                 </div>
                  <div class="mb-4">
                     <label for="ganttTaskParent" class="block text-sm font-medium text-gray-700 mb-1">父任務 (可選)</label>
@@ -791,7 +802,7 @@
 
             // --- Global Print Handlers ---
             window.addEventListener('afterprint', () => {
-                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'is-printing-detail', 'print-with-progress', 'print-no-assignee', 'print-no-progress-col');
+                document.body.classList.remove('is-printing-list', 'is-printing-gantt', 'is-printing-detail', 'print-with-progress', 'print-no-assignee', 'print-no-progress-col', 'print-no-remarks');
                 
                 if (detailModal) detailModal.classList.remove('is-printing');
                 if (eventDetailModal) eventDetailModal.classList.remove('is-printing');
@@ -1325,7 +1336,7 @@
                                     duration: 1, // Default duration
                                     progress: 0,
                                     parentId: null,
-                                    eventId: item.id,
+                                    eventId: item.id, // Link event to gantt task
                                     createdAt: serverTimestamp()
                                 };
                                 await addDoc(appDataCollectionRef, ganttTask);
@@ -1428,6 +1439,7 @@
             const printProgressToggle = document.getElementById('printProgressToggle');
             const printAssigneeToggle = document.getElementById('printAssigneeToggle');
             const printProgressColumnToggle = document.getElementById('printProgressColumnToggle');
+            const printRemarksToggle = document.getElementById('printRemarksToggle');
             const hideCompletedTasksToggle = document.getElementById('hideCompletedTasksToggle');
             const ganttZoomSlider = document.getElementById('ganttZoomSlider');
             
@@ -1446,6 +1458,7 @@
             const ganttTaskDurationInput = document.getElementById('ganttTaskDuration');
             const ganttTaskProgressInput = document.getElementById('ganttTaskProgress');
             const ganttProgressValue = document.getElementById('ganttProgressValue');
+            const ganttTaskRemarksInput = document.getElementById('ganttTaskRemarks');
             const ganttTaskParentSelect = document.getElementById('ganttTaskParent');
 
             // Set current date in header
@@ -1465,7 +1478,8 @@
                 { label: '開始日期', width: 100 },
                 { label: '結束日期', width: 100 },
                 { label: '人員', width: 80 },
-                { label: '進度', width: 50 }
+                { label: '進度', width: 50 },
+                { label: '備註', width: 150 }
             ];
             // Load column config from localStorage
             const savedColumns = localStorage.getItem('ganttColumnConfig');
@@ -1617,6 +1631,7 @@
                     cell.className = 'task-header-cell';
                     if (index === 5) cell.classList.add('gantt-assignee-col');
                     if (index === 6) cell.classList.add('gantt-progress-col');
+                    if (index === 7) cell.classList.add('gantt-remarks-col');
                     cell.textContent = col.label;
                     cell.style.width = `${col.width}px`;
 
@@ -1809,7 +1824,8 @@
                     task.start,
                     endDate,
                     task.assignee || '',
-                    `${task.progress}%`
+                    `${task.progress}%`,
+                    task.remarks || ''
                 ];
                 
                 rowData.forEach((data, i) => {
@@ -1817,11 +1833,17 @@
                     cell.className = 'task-cell';
                     if (i === 5) cell.classList.add('gantt-assignee-col');
                     if (i === 6) cell.classList.add('gantt-progress-col');
+                    if (i === 7) cell.classList.add('gantt-remarks-col');
                     cell.textContent = data;
                     cell.style.width = `${columns[i].width}px`;
                      if (i === 1) { // Task name column
                         cell.style.paddingLeft = `${level * 20 + 10}px`;
                         cell.classList.add('truncate');
+                        cell.title = data;
+                    }
+                    if (i === 7) { // Remarks column
+                        cell.classList.add('truncate');
+                        cell.title = data;
                     }
                     taskRow.appendChild(cell);
                 });
@@ -1896,6 +1918,7 @@
                     ganttTaskDurationInput.value = task.duration;
                     ganttTaskProgressInput.value = task.progress;
                     ganttProgressValue.textContent = `${task.progress}%`;
+                    ganttTaskRemarksInput.value = task.remarks || '';
                     ganttTaskParentSelect.value = task.parentId || "";
                     ganttDeleteBtn.classList.remove('hidden');
 
@@ -1961,6 +1984,7 @@
                     start: ganttTaskStartInput.value,
                     duration: parseInt(ganttTaskDurationInput.value),
                     progress: parseInt(ganttTaskProgressInput.value),
+                    remarks: ganttTaskRemarksInput.value,
                     parentId: parentId
                 };
                 
@@ -2016,6 +2040,7 @@
                 
                 const printAssignee = printAssigneeToggle.checked;
                 const printProgressCol = printProgressColumnToggle.checked;
+                const printRemarks = printRemarksToggle.checked;
 
                 if (printProgressToggle.checked) {
                     document.body.classList.add('print-with-progress');
@@ -2026,10 +2051,13 @@
                 if (!printProgressCol) {
                     document.body.classList.add('print-no-progress-col');
                 }
+                if (!printRemarks) {
+                    document.body.classList.add('print-no-remarks');
+                }
 
                 let printSidebarWidth = 0;
                 columns.forEach((col, index) => {
-                    if ((index === 5 && !printAssignee) || (index === 6 && !printProgressCol)) {
+                    if ((index === 5 && !printAssignee) || (index === 6 && !printProgressCol) || (index === 7 && !printRemarks)) {
                         // Do not add width of hidden columns
                     } else {
                         printSidebarWidth += col.width;
@@ -2292,5 +2320,4 @@
     </script>
 </body>
 </html>
-
 
