@@ -17,9 +17,10 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* 甘特圖佈局變數 - 增加寬度以容納結束日期 */
+        /* 甘特圖佈局變數 - 預設值，會被 JS 覆蓋 */
         :root {
-            --grid-cols: 520px; /* 增加左側寬度 */
+            --name-width: 220px; /* 任務名稱欄位預設寬度 */
+            --grid-cols: 560px; /* 左側列表總寬度 (Name + 其他固定欄位) */
             --timeline-width: 1200px;
         }
 
@@ -55,6 +56,15 @@
 
         .gantt-row:hover { background-color: #f1f5f9; }
         .gantt-timeline-row:hover { background-color: #f8fafc; }
+
+        /* Column Resizer */
+        .col-resizer {
+            position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+            cursor: col-resize; z-index: 50; opacity: 0; transition: opacity 0.2s;
+        }
+        .header-cell-resizable:hover .col-resizer, .col-resizer:hover, .col-resizer.resizing {
+            opacity: 1; background: rgba(59, 130, 246, 0.5); /* blue-500 */
+        }
 
         @media print {
             .no-print { display: none !important; }
@@ -183,16 +193,6 @@
                 let current = new Date(startDateStr);
                 let remaining = parseInt(days);
                 
-                // 如果開始日期就是週末，先移到週一嗎？通常甘特圖會包含開始日期。
-                // 這裡假設開始日期就算第一天(如果是工作日)。
-                // 邏輯：每找到一個工作日，remaining - 1。
-                
-                // 修正邏輯：如果工期是1天，結束日期 = 開始日期（若為工作日）。
-                // 所以我們先檢查當天，如果是工作日，remaining--。
-                // 然後不斷 +1 天，直到 remaining == 0。
-                
-                // 但是為了顯示正確的 bar，如果 duration 1，我們希望回傳 start date。
-                // 用迴圈處理
                 let resultDate = new Date(current);
                 
                 while (remaining > 0) {
@@ -333,6 +333,10 @@
                 this.filterAssignee = '';
                 this.hideCompleted = false;
                 this.showProgressCol = true;
+                
+                // Column resizing state
+                this.nameColWidth = 180; // Default width
+                this.isResizing = false;
             }
 
             setView(mode) {
@@ -373,13 +377,45 @@
 
             toggleProgressCol(checked) {
                 this.showProgressCol = checked;
-                // Update CSS variable based on columns shown (180+80+80+50+70 + optional 60)
-                const baseWidth = 460;
-                const progressWidth = 60;
-                const totalWidth = checked ? (baseWidth + progressWidth) : baseWidth;
+                this.updateLayout(); // Re-calc grid width
+            }
+            
+            // --- Column Resizing Logic ---
+            startResize(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.isResizing = true;
+                this.startX = e.pageX;
+                this.startWidth = this.nameColWidth;
                 
-                utils.$('#view-gantt').style.setProperty('--grid-cols', `${totalWidth}px`);
-                app.render();
+                const moveHandler = (e) => {
+                    if (!this.isResizing) return;
+                    const diff = e.pageX - this.startX;
+                    const newWidth = Math.max(120, this.startWidth + diff); // Min 120px
+                    this.nameColWidth = newWidth;
+                    this.updateLayout();
+                };
+                
+                const upHandler = () => {
+                    this.isResizing = false;
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('mouseup', upHandler);
+                };
+                
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('mouseup', upHandler);
+            }
+            
+            updateLayout() {
+                const container = utils.$('#view-gantt');
+                if (!container) return;
+                
+                // Fixed widths: Start(80) + End(80) + Dur(50) + Assign(70) + (Prog(60))
+                const fixedWidths = 80 + 80 + 50 + 70 + (this.showProgressCol ? 60 : 0);
+                const totalGridWidth = this.nameColWidth + fixedWidths;
+                
+                container.style.setProperty('--name-width', `${this.nameColWidth}px`);
+                container.style.setProperty('--grid-cols', `${totalGridWidth}px`);
             }
 
             processTasks(tasks) {
@@ -463,6 +499,9 @@
                 // Update Timeline Width Variable
                 const timelinePixelWidth = this.daysToShow * this.zoom;
                 container.style.setProperty('--timeline-width', `${timelinePixelWidth}px`);
+                
+                // Apply Layout Variables
+                this.updateLayout();
 
                 let headerTimeline = '';
                 let rowsHTML = '';
@@ -490,11 +529,7 @@
                         const start = new Date(t.start);
                         const dayDiff = Math.ceil((start - viewStart) / (1000 * 60 * 60 * 24));
                         
-                        // Width calculation: need to account for weekends in the display bar?
-                        // Simple approach: show bar spanning from start date to end date on the calendar.
-                        // Calculate calendar days diff between start and end date.
                         const endDateObj = new Date(t.endDate);
-                        // Add 1 day to end date for calculation because bar should cover the end date fully
                         const calendarDuration = Math.ceil((endDateObj - start) / (1000 * 60 * 60 * 24)) + 1;
                         
                         const width = Math.max(1, calendarDuration) * this.zoom;
@@ -508,7 +543,7 @@
                         <div class="contents group hover:bg-gray-50">
                             <!-- Left Grid (Sticky) -->
                             <div class="gantt-row flex border-b border-r bg-white transition-colors items-center h-[40px] sticky-left cursor-pointer ${rowClass}" onclick="window.app.handlers.edit('gantt', '${t.id}')">
-                                <div class="w-[180px] px-3 text-sm font-medium truncate border-r border-gray-300 flex items-center" title="${t.name}">
+                                <div class="px-3 text-sm font-medium truncate border-r border-gray-300 flex items-center" style="width:var(--name-width); min-width:var(--name-width);" title="${t.name}">
                                     <span style="width:${t.level * 16}px" class="flex-shrink-0 inline-block"></span>
                                     ${t.level > 0 ? '<span class="text-gray-400 mr-1">↳</span>' : ''}
                                     <span class="${t.isSummary ? 'text-slate-800' : ''}">${t.name}</span>
@@ -543,8 +578,8 @@
                     });
                 }
 
-                // Grid Template: Name(180) Start(80) End(80) Dur(50) Assign(70) Prog(60)
-                const gridTemplate = `180px 80px 80px 50px 70px ${this.showProgressCol ? '60px' : '0px'}`;
+                // Dynamic Grid Template using CSS Variable
+                const gridTemplate = `var(--name-width) 80px 80px 50px 70px ${this.showProgressCol ? '60px' : '0px'}`;
 
                 container.innerHTML = `
                     <div class="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
@@ -589,7 +624,10 @@
                             <div class="gantt-grid-layout">
                                 <!-- Sticky Header Corner -->
                                 <div class="sticky-corner h-14 grid divide-x divide-gray-200 bg-gray-100 z-40" style="grid-template-columns: ${gridTemplate};">
-                                    <div class="flex items-center justify-center text-xs font-bold text-gray-500">任務名稱</div>
+                                    <div class="flex items-center justify-center text-xs font-bold text-gray-500 header-cell-resizable relative">
+                                        任務名稱
+                                        <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
+                                    </div>
                                     <div class="flex items-center justify-center text-xs font-bold text-gray-500">開始</div>
                                     <div class="flex items-center justify-center text-xs font-bold text-gray-500">結束</div>
                                     <div class="flex items-center justify-center text-xs font-bold text-gray-500">工期</div>
