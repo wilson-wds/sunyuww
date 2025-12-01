@@ -248,7 +248,14 @@
             }
             async add(data) { await addDoc(this.coll, { ...data, createdAt: serverTimestamp() }); utils.toast('新增成功'); }
             async update(id, data) { await updateDoc(doc(this.coll, id), data); utils.toast('更新成功'); }
-            async del(id) { if(confirm('確定要刪除此項目嗎？如果這是父任務，建議先移除子任務的關聯。')) { await deleteDoc(doc(this.coll, id)); utils.toast('已刪除', '🗑️'); } }
+            async del(id) { 
+                if(confirm('確定要刪除此項目嗎？如果這是父任務，建議先移除子任務的關聯。')) { 
+                    await deleteDoc(doc(this.coll, id)); 
+                    utils.toast('已刪除', '🗑️'); 
+                    return true;
+                }
+                return false;
+            }
         }
         const db = new FirestoreService();
 
@@ -671,7 +678,10 @@
                 
                 window.app = this;
                 this.handlers = {
-                    del: (id) => db.del(id),
+                    del: async (id) => {
+                        const success = await db.del(id);
+                        if(success) window.modal.close();
+                    },
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: (id) => this.addToGantt(id),
                     save: async (id, type) => {
@@ -772,10 +782,13 @@
                 const extraHtml = (type === 'todo' && id) ? `<div class="mt-4 p-3 bg-gray-50 rounded border"><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="completed" ${item.completed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-gray-700">已完成此項目</span></label></div>` : 
                                   (type === 'event' && id) ? `<div class="mt-4 p-3 bg-gray-50 rounded border"><label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-gray-700">標記為已結案</span></label></div>` : '';
 
+                const deleteBtn = id ? `<button type="button" onclick="window.app.handlers.del('${id}')" class="px-5 py-2.5 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-colors mr-auto flex items-center gap-2"><span class="text-lg">🗑️</span> 刪除</button>` : '';
+
                 window.modal.open(
                     id ? `✏️ 編輯${this.getTypeName(type)}` : `➕ 新增${this.getTypeName(type)}`,
                     `<form id="edit-form">${renderer.form(fields, type)}${extraHtml}</form>`,
-                    `<button onclick="window.modal.close()" class="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">取消</button>
+                    `${deleteBtn}
+                     <button onclick="window.modal.close()" class="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">取消</button>
                      <button onclick="window.app.handlers.save('${id||''}', '${type}')" class="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-lg hover:shadow-xl transition-all">儲存變更</button>`
                 );
             },
