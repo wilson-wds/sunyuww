@@ -53,7 +53,7 @@
 
         /* Today Marker Styles - Fixed Alignment */
         .today-line { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; background-color: rgba(239, 68, 68, 0.5); z-index: 15; pointer-events: none; }
-        .today-label { position: absolute; top: 0; background: #ef4444; color: white; font-size: 10px; padding: 0 4px; border-radius: 0 0 4px 4px; left: 50%; transform: translateX(-50%); z-index: 16; }
+        .today-label { position: absolute; top: 0; background: #ef4444; color: white; font-size: 10px; padding: 0 4px; border-radius: 0 0 4px 4px; left: 50%; transform: translateX(-50%); z-index: 16; white-space: nowrap; }
 
         .gantt-row:hover { background-color: #f1f5f9; }
         .gantt-timeline-row:hover { background-color: #f8fafc; }
@@ -379,6 +379,7 @@
             toggleProgressCol(checked) {
                 this.showProgressCol = checked;
                 this.updateLayout(); // Re-calc grid width
+                app.render();
             }
             
             // --- Column Resizing Logic ---
@@ -395,6 +396,7 @@
                     const newWidth = Math.max(120, this.startWidth + diff); // Min 120px
                     this.nameColWidth = newWidth;
                     this.updateLayout();
+                    app.render(); // Re-render to apply new grid template to rows
                 };
                 
                 const upHandler = () => {
@@ -519,9 +521,12 @@
                         <div class="gantt-timeline-cell ${isWeekend ? 'bg-gray-50 text-gray-400' : ''} ${isToday ? 'bg-red-50' : ''}" style="width:${this.zoom}px">
                             <div class="text-[10px] leading-tight pt-1 ${isToday ? 'text-red-600 font-bold' : ''}">${weekday}</div>
                             <div class="text-sm font-medium ${isToday ? 'text-red-600' : ''}">${dayLabel}</div>
-                            ${isToday ? `<div class="today-label">Today</div><div class="today-line"></div>` : ''}
+                            ${isToday ? `<div class="today-label" title="今天是: ${today.toLocaleDateString()}">Today</div><div class="today-line"></div>` : ''}
                         </div>`;
                 }
+
+                // Dynamic Grid Template using CSS Variable
+                const gridTemplate = `var(--name-width) 80px 80px 50px 70px ${this.showProgressCol ? '60px' : '0px'}`;
 
                 if(!displayTasks.length) {
                     rowsHTML = `<div class="p-12 text-center text-gray-400 col-span-2 bg-white">沒有符合的排程任務</div>`;
@@ -542,19 +547,21 @@
 
                         rowsHTML += `
                         <div class="contents group hover:bg-gray-50">
-                            <!-- Left Grid (Sticky) -->
-                            <div class="gantt-row flex border-b border-r bg-white transition-colors items-center h-[40px] sticky-left cursor-pointer ${rowClass}" onclick="window.app.handlers.edit('gantt', '${t.id}')">
-                                <div class="px-3 text-sm font-medium truncate border-r border-gray-300 flex items-center" style="width:var(--name-width); min-width:var(--name-width);" title="${t.name}">
+                            <!-- Left Grid (Sticky) - Converted to GRID to match header alignment -->
+                            <div class="gantt-row grid border-b border-r bg-white transition-colors items-center h-[40px] sticky-left cursor-pointer ${rowClass}" 
+                                 style="grid-template-columns: ${gridTemplate};"
+                                 onclick="window.app.handlers.edit('gantt', '${t.id}')">
+                                <div class="px-3 text-sm font-medium truncate border-r border-gray-300 flex items-center h-full" title="${t.name}">
                                     <span style="width:${t.level * 16}px" class="flex-shrink-0 inline-block"></span>
                                     ${t.level > 0 ? '<span class="text-gray-400 mr-1">↳</span>' : ''}
                                     <span class="${t.isSummary ? 'text-slate-800' : ''}">${t.name}</span>
                                 </div>
-                                <div class="w-[80px] px-2 text-xs text-center border-r border-gray-300 text-gray-600">${t.start.slice(5)}</div>
-                                <div class="w-[80px] px-2 text-xs text-center border-r border-gray-300 text-gray-600">${t.endDate ? t.endDate.slice(5) : '-'}</div>
-                                <div class="w-[50px] px-2 text-xs text-center border-r border-gray-300 text-gray-600">${t.duration}天</div>
-                                <div class="w-[70px] px-2 text-xs text-center border-r border-gray-300 truncate text-gray-600">${t.assignee||'-'}</div>
+                                <div class="px-2 text-xs text-center border-r border-gray-300 text-gray-600 h-full flex items-center justify-center">${t.start.slice(5)}</div>
+                                <div class="px-2 text-xs text-center border-r border-gray-300 text-gray-600 h-full flex items-center justify-center">${t.endDate ? t.endDate.slice(5) : '-'}</div>
+                                <div class="px-2 text-xs text-center border-r border-gray-300 text-gray-600 h-full flex items-center justify-center">${t.duration}天</div>
+                                <div class="px-2 text-xs text-center border-r border-gray-300 truncate text-gray-600 h-full flex items-center justify-center">${t.assignee||'-'}</div>
                                 ${this.showProgressCol ? `
-                                <div class="w-[60px] px-2 text-xs text-center flex items-center justify-center border-r border-gray-300">
+                                <div class="px-2 text-xs text-center flex items-center justify-center border-r border-gray-300 h-full">
                                     <span class="px-1.5 rounded ${t.progress==100?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'}">${t.progress}%</span>
                                 </div>` : ''}
                             </div>
@@ -578,9 +585,6 @@
                         </div>`;
                     });
                 }
-
-                // Dynamic Grid Template using CSS Variable
-                const gridTemplate = `var(--name-width) 80px 80px 50px 70px ${this.showProgressCol ? '60px' : '0px'}`;
 
                 container.innerHTML = `
                     <div class="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
