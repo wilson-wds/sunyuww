@@ -51,7 +51,8 @@
         .gantt-row.is-parent-row { background-color: #e2e8f0 !important; font-weight: 700; color: #1e293b; border-bottom: 1px solid #94a3b8; }
         .gantt-row.is-parent-row:hover { background-color: #cbd5e1 !important; }
 
-        .today-line { position: absolute; top: 0; bottom: 0; width: 2px; background-color: rgba(239, 68, 68, 0.5); z-index: 15; pointer-events: none; }
+        /* Today Marker Styles - Fixed Alignment */
+        .today-line { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; background-color: rgba(239, 68, 68, 0.5); z-index: 15; pointer-events: none; }
         .today-label { position: absolute; top: 0; background: #ef4444; color: white; font-size: 10px; padding: 0 4px; border-radius: 0 0 4px 4px; left: 50%; transform: translateX(-50%); z-index: 16; }
 
         .gantt-row:hover { background-color: #f1f5f9; }
