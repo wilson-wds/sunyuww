@@ -43,11 +43,12 @@
         .gantt-timeline-cell { flex-shrink: 0; border-right: 1px solid #cbd5e1; text-align: center; position: relative; }
 
         /* Task Bars */
-        .gantt-bar { position: absolute; height: 20px; top: 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 11px; display: flex; items-center; padding-left: 8px; color: white; overflow: hidden; z-index: 10; white-space: nowrap; }
+        .gantt-bar { position: absolute; height: 20px; top: 10px; border-radius: 4px; cursor: grab; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 11px; display: flex; items-center; padding-left: 8px; color: white; overflow: hidden; z-index: 10; white-space: nowrap; }
         .gantt-bar:hover { filter: brightness(110%); transform: translateY(-1px); z-index: 25; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .gantt-bar:active { cursor: grabbing; }
         
         /* Parent Task Bar */
-        .gantt-bar.is-parent { height: 12px; top: 14px; border-radius: 6px; background: #334155; opacity: 0.95; }
+        .gantt-bar.is-parent { height: 12px; top: 14px; border-radius: 6px; background: #334155; opacity: 0.95; cursor: default; }
         .gantt-bar.is-parent::before, .gantt-bar.is-parent::after { content: ''; position: absolute; top: 100%; width: 0; height: 0; border-style: solid; }
         .gantt-bar.is-parent::before { left: 0; border-width: 6px 6px 0 0; border-color: #334155 transparent transparent transparent; }
         .gantt-bar.is-parent::after { right: 0; border-width: 6px 0 0 6px; border-color: #334155 transparent transparent transparent; }
@@ -221,6 +222,11 @@
                     cur.setDate(cur.getDate() + 1);
                 }
                 return count;
+            },
+            addDays: (dateStr, days) => {
+                const d = new Date(dateStr);
+                d.setDate(d.getDate() + days);
+                return d.toISOString().split('T')[0];
             }
         };
 
@@ -357,7 +363,7 @@
                 // Drag Drop State
                 this.draggedId = null;
                 this.dragOverId = null;
-                this.dragPosition = null; // 'top' or 'bottom'
+                this.dragPosition = null; 
             }
 
             setView(mode) {
@@ -437,7 +443,7 @@
                 container.style.setProperty('--grid-cols', `${totalGridWidth}px`);
             }
 
-            // --- Drag & Drop Handlers ---
+            // --- Drag & Drop Handlers (Row Reorder) ---
             handleDragStart(e, id) {
                 this.draggedId = id;
                 e.dataTransfer.effectAllowed = 'move';
@@ -455,7 +461,6 @@
                 this.dragOverId = id;
                 this.dragPosition = e.clientY < mid ? 'top' : 'bottom';
                 
-                // Visual feedback
                 document.querySelectorAll('.gantt-row').forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
                 if (this.dragPosition === 'top') row.classList.add('drag-over-top');
                 else row.classList.add('drag-over-bottom');
@@ -467,35 +472,83 @@
                 
                 if (!this.draggedId || this.draggedId === targetId) return;
 
-                // Find task objects
                 const draggedTask = app.data.find(t => t.id === this.draggedId);
                 const targetTask = app.data.find(t => t.id === targetId);
 
                 if (!draggedTask || !targetTask) return;
 
-                // Restrict to same parent (siblings only)
                 if (draggedTask.parentId !== targetTask.parentId) {
                     utils.toast('❌ 只能在同一層級內排序', '⚠️');
                     return;
                 }
 
-                // Get all siblings
                 const siblings = app.data.filter(t => t.type === 'gantt' && t.parentId === draggedTask.parentId)
                                          .sort((a,b) => (a.order||0) - (b.order||0));
                 
-                // Calculate new order
                 const draggedIdx = siblings.findIndex(t => t.id === this.draggedId);
-                siblings.splice(draggedIdx, 1); // remove dragged
+                siblings.splice(draggedIdx, 1); 
                 const targetIdx = siblings.findIndex(t => t.id === targetId);
                 
                 const insertIdx = this.dragPosition === 'top' ? targetIdx : targetIdx + 1;
                 siblings.splice(insertIdx, 0, draggedTask);
 
-                // Update orders in DB
                 const updates = siblings.map((t, idx) => ({ id: t.id, order: idx }));
                 await db.batchUpdateOrders(updates);
                 
                 this.draggedId = null;
+            }
+
+            // --- Bar Drag Handler (Date Modify) ---
+            handleBarDragStart(e, id, isSummary) {
+                e.preventDefault(); 
+                e.stopPropagation(); 
+
+                if (isSummary) {
+                    utils.toast('⚠️ 摘要任務無法移動', '🔒');
+                    return;
+                }
+
+                const task = app.data.find(t => t.id === id);
+                if (!task) return;
+
+                const barEl = e.currentTarget;
+                const startX = e.pageX;
+                let isDragging = false;
+
+                // Visual feedback
+                barEl.style.cursor = 'grabbing';
+                barEl.style.transition = 'none';
+
+                const moveHandler = (e) => {
+                    const diff = e.pageX - startX;
+                    if (Math.abs(diff) > 5) isDragging = true;
+                    barEl.style.transform = `translateX(${diff}px)`;
+                };
+
+                const upHandler = async (e) => {
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('mouseup', upHandler);
+                    
+                    barEl.style.cursor = 'grab';
+                    barEl.style.transition = ''; 
+                    barEl.style.transform = ''; 
+
+                    if (!isDragging) {
+                        window.app.handlers.edit('gantt', id);
+                    } else {
+                        const diff = e.pageX - startX;
+                        const daysDiff = Math.round(diff / this.zoom);
+                        
+                        if (daysDiff !== 0) {
+                            const newStart = utils.addDays(task.start, daysDiff);
+                            await db.update(id, { start: newStart });
+                            utils.toast(`📅 日期已更新`);
+                        }
+                    }
+                };
+
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('mouseup', upHandler);
             }
 
             processTasks(tasks) {
@@ -521,7 +574,7 @@
                     if (node.children.length > 0) {
                         node.children.sort(sortFn);
                         const childTimes = node.children.map(c => {
-                            if (c.suspended) return null; // Skip suspended in calculation
+                            if (c.suspended) return null; 
                             const start = new Date(c.start);
                             const endStr = utils.addWorkingDays(c.start, c.duration);
                             return { start: start.getTime(), end: new Date(endStr).getTime() };
@@ -534,7 +587,6 @@
                             const endDateStr = new Date(maxEnd).toISOString().split('T')[0];
                             node.duration = utils.countWorkingDays(node.start, endDateStr);
                             
-                            // Weighted progress
                             let totalDur = 0;
                             let weightedProg = 0;
                             node.children.forEach(c => {
@@ -612,13 +664,12 @@
                         let barClass = t.isSummary ? 'is-parent' : (t.progress == 100 ? 'bg-emerald-600' : (isOverdue ? 'bg-red-600' : 'bg-indigo-600'));
                         let rowClass = t.isSummary ? 'is-parent-row' : '';
 
-                        // Render Bar only if not suspended
                         let barHTML = '';
                         if (!t.suspended) {
                             barHTML = `
                                 <div class="gantt-bar ${barClass} shadow-sm"
                                      style="left:${left}px; width:${width}px;"
-                                     onclick="window.app.handlers.edit('gantt', '${t.id}')">
+                                     onmousedown="window.app.gantt.handleBarDragStart(event, '${t.id}', ${!!t.isSummary})">
                                     ${!t.isSummary ? `<span class="truncate pr-1 drop-shadow-md font-bold">${t.progress}%</span>` : ''}
                                     ${isOverdue ? '<span class="absolute right-1 top-1 w-2 h-2 bg-white rounded-full animate-ping"></span>' : ''}
                                 </div>
