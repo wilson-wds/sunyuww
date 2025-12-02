@@ -554,7 +554,7 @@
                                  style="grid-template-columns: ${gridTemplate};"
                                  onclick="window.app.handlers.edit('gantt', '${t.id}')">
                                 <div class="px-2 text-xs text-center font-bold text-slate-600 h-full flex items-center justify-center gantt-cell-border">${t.wbs}</div>
-                                <div class="px-3 text-sm font-medium truncate gantt-cell-border flex items-center h-full" title="${t.name}">
+                                <div class="px-3 ${t.isSummary ? 'text-base font-bold' : 'text-sm font-medium'} truncate gantt-cell-border flex items-center h-full" title="${t.name}">
                                     <span style="width:${t.level * 16}px" class="flex-shrink-0 inline-block"></span>
                                     ${t.level > 0 ? '<span class="text-slate-400 mr-1">↳</span>' : ''}
                                     <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-700'}">${t.name}</span>
