@@ -53,9 +53,9 @@
         .gantt-bar.is-parent::before { left: 0; border-width: 6px 6px 0 0; border-color: #334155 transparent transparent transparent; }
         .gantt-bar.is-parent::after { right: 0; border-width: 6px 0 0 6px; border-color: #334155 transparent transparent transparent; }
 
-        /* Parent Row Styling */
-        .gantt-row.is-parent-row { background-color: #e2e8f0 !important; font-weight: 700; color: #0f172a; border-bottom: 1px solid #64748b; }
-        .gantt-row.is-parent-row:hover { background-color: #cbd5e1 !important; }
+        /* Parent Row Styling - Screen (Darker Slate-300) */
+        .gantt-row.is-parent-row { background-color: #cbd5e1 !important; font-weight: 700; color: #0f172a; border-bottom: 1px solid #64748b; }
+        .gantt-row.is-parent-row:hover { background-color: #94a3b8 !important; }
 
         /* Today Marker */
         .today-line { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; background-color: rgba(239, 68, 68, 0.8); z-index: 15; pointer-events: none; }
@@ -84,7 +84,8 @@
             .print-show { display: block !important; }
             body { height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .gantt-container { overflow: visible; }
-            .gantt-row.is-parent-row { background-color: #e2e8f0 !important; -webkit-print-color-adjust: exact; }
+            /* Parent Row Styling - Print (Even Darker Slate-400 for contrast) */
+            .gantt-row.is-parent-row { background-color: #94a3b8 !important; -webkit-print-color-adjust: exact; }
             .gantt-bar { -webkit-print-color-adjust: exact; }
             .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner { border-color: #000 !important; }
         }
@@ -357,6 +358,7 @@
                 this.filterAssignee = '';
                 this.hideCompleted = false;
                 this.showProgressCol = true;
+                
                 this.nameColWidth = 180;
                 this.isResizing = false;
                 
