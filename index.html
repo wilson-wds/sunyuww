@@ -444,7 +444,9 @@
                             ? `<div class="relative"><select name="${f.name}" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none font-medium text-slate-700 transition-colors">${f.opts.map(o => {
                                 const val = typeof o === 'object' ? o.v : o;
                                 const lbl = typeof o === 'object' ? o.l : o;
-                                return `<option value="${val}" ${f.val == val ? 'selected' : ''}>${lbl}</option>`;
+                                // Fix: Ensure null and empty string comparison works for "No Parent" option
+                                const isSelected = (f.val || '') == (val || '');
+                                return `<option value="${val}" ${isSelected ? 'selected' : ''}>${lbl}</option>`;
                             }).join('')}</select><div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500"><i class="ph-bold ph-caret-down"></i></div></div>`
                             : f.type === 'textarea' 
                                 ? `<textarea name="${f.name}" rows="4" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 transition-colors" placeholder="請輸入${f.label}...">${f.val||''}</textarea>`
@@ -1123,8 +1125,26 @@
                     { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }
                 ];
                 if (type === 'gantt') {
-                    const potentialParents = this.data.filter(i => i.type === 'gantt' && i.id !== id && !i.parentId);
-                    const parentOpts = [{v: '', l: '無 (設為頂層任務)'}, ...potentialParents.map(p => ({v: p.id, l: `↳ ${p.name}`}))];
+                    // Fix: Allow deep nesting by removing the '!i.parentId' restriction
+                    // Also prevent cycles: a task cannot be its own ancestor
+                    const potentialParents = this.data.filter(i => {
+                        if (i.type !== 'gantt' || i.id === id) return false;
+                        
+                        // Prevent Cycle: check if 'id' is an ancestor of 'i'
+                        if (id) {
+                            let ancestor = i;
+                            let safety = 0;
+                            while(ancestor.parentId && safety < 100) {
+                                if(ancestor.parentId === id) return false; // Cycle detected
+                                ancestor = this.data.find(t => t.id === ancestor.parentId);
+                                if(!ancestor) break;
+                                safety++;
+                            }
+                        }
+                        return true;
+                    });
+
+                    const parentOpts = [{v: '', l: '無 (設為頂層任務)'}, ...potentialParents.map(p => ({v: p.id, l: p.name}))];
                     fields = [
                         { label: '任務名稱', name: 'name', val: item.name, placeholder: '輸入任務名稱...' },
                         { label: '父任務 (群組)', name: 'parentId', type: 'select', opts: parentOpts, val: item.parentId || '' },
