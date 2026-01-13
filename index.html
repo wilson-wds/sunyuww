@@ -142,6 +142,17 @@
             body { height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .gantt-container { overflow: visible; }
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
+
+            /* 修正列印時線條消失的問題：強制加深顏色 */
+            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row {
+                border-color: #64748b !important; /* Slate-500 強制深灰色 */
+            }
+            .gantt-timeline-cell {
+                border-right-color: #94a3b8 !important; /* 時間軸虛線使用 Slate-400 */
+            }
+            .gantt-row {
+                border-bottom: 1px solid #64748b !important;
+            }
         }
     </style>
 </head>
