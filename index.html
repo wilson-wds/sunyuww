@@ -176,6 +176,13 @@
 
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
 
+            /* 針對列印特別加深父任務背景色，並強制列印背景 */
+            .gantt-row.is-parent-row {
+                background-color: #cbd5e1 !important; /* Slate-300 加深 */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
             /* 修正列印時線條消失的問題：強制加深顏色 */
             .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row {
                 border-color: #64748b !important; /* Slate-500 強制深灰色 */
