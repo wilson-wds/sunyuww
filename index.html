@@ -1133,10 +1133,10 @@
                             end = utils.addWorkingDays(item.start, item.duration);
                         }
                         
-                        // 開啟選擇日曆的 Modal
+                        // 開啟選擇日曆的 Modal - 改為使用 id 來綁定事件
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
-                                <button onclick="window.utils.openGoogleCalendar('${title}', '${details}', '${start}', '${end}')" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm">
+                                <button id="btn-google-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm w-full">
                                     <div class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center flex-shrink-0">
                                         <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" class="w-6 h-6">
                                     </div>
@@ -1146,7 +1146,7 @@
                                     </div>
                                 </button>
                                 
-                                <button onclick="window.utils.generateICS('${title}', '${details}', '${start}', '${end}')" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-left shadow-sm">
+                                <button id="btn-apple-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-left shadow-sm w-full">
                                     <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center flex-shrink-0">
                                         <i class="ph-fill ph-apple-logo text-2xl"></i>
                                     </div>
@@ -1156,7 +1156,7 @@
                                     </div>
                                 </button>
 
-                                <button onclick="window.utils.generateICS('${title}', '${details}', '${start}', '${end}')" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm">
+                                <button id="btn-outlook-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm w-full">
                                     <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
                                         <i class="ph-fill ph-microsoft-outlook text-2xl"></i>
                                     </div>
@@ -1169,6 +1169,23 @@
                         `;
                         
                         window.modal.open('加入行事曆', html, `<button onclick="window.modal.close()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">關閉</button>`);
+                        
+                        // 等待 Modal 渲染完成後綁定事件
+                        setTimeout(() => {
+                            const btnGoogle = document.getElementById('btn-google-calendar');
+                            const btnApple = document.getElementById('btn-apple-calendar');
+                            const btnOutlook = document.getElementById('btn-outlook-calendar');
+
+                            if (btnGoogle) {
+                                btnGoogle.onclick = () => window.utils.openGoogleCalendar(title, details, start, end);
+                            }
+                            if (btnApple) {
+                                btnApple.onclick = () => window.utils.generateICS(title, details, start, end);
+                            }
+                            if (btnOutlook) {
+                                btnOutlook.onclick = () => window.utils.generateICS(title, details, start, end);
+                            }
+                        }, 50);
                     },
 
                     // 新增：複製甘特圖任務
