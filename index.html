@@ -967,7 +967,7 @@
                                     <i class="ph-bold ph-dots-six-vertical text-lg"></i>
                                 </div>
                                 
-                                <div class="px-2 gantt-cell-border flex items-center h-full overflow-hidden relative">
+                                <div class="px-2 gantt-cell-border flex items-center h-full overflow-hidden relative group/namecol">
                                     <div style="width:${indent}px" class="flex-shrink-0"></div>
                                     ${t.isSummary ? `
                                         <div onclick="window.app.gantt.toggleCollapse('${t.id}')" class="collapse-arrow mr-1 ${isCollapsed?'collapsed':''}">
@@ -975,11 +975,22 @@
                                         </div>
                                     ` : '<div class="w-6"></div>'}
                                     
-                                    <div class="truncate flex-1 cursor-pointer hover:text-indigo-600 transition-colors py-2" onclick="window.app.handlers.edit('gantt', '${t.id}')" title="${t.name}">
+                                    <div class="truncate shrink cursor-pointer hover:text-indigo-600 transition-colors py-2" style="max-width: 50%;" onclick="window.app.handlers.edit('gantt', '${t.id}')" title="${t.name}">
                                         <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
                                     </div>
-                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 ml-2 z-20 transition-colors" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
-                                    ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg"></i>' : ''}
+                                    
+                                    <!-- 新增：行內備註輸入框 -->
+                                    <input type="text" 
+                                           class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20" 
+                                           placeholder="新增備註" 
+                                           value="${t.note || ''}"
+                                           title="點擊新增/編輯備註"
+                                           onclick="event.stopPropagation();"
+                                           onchange="window.app.handlers.updateNote('${t.id}', this.value)"
+                                           onkeydown="if(event.key === 'Enter') this.blur();">
+
+                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
+                                    ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg flex-shrink-0"></i>' : ''}
                                     <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
                                 </div>
 
@@ -1114,6 +1125,16 @@
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: (id) => this.addToGantt(id),
                     
+                    // 新增：行內直接更新備註功能
+                    updateNote: async (id, note) => {
+                        try {
+                            await db.update(id, { note: note });
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('備註更新失敗', '❌');
+                        }
+                    },
+
                     // 新增：處理行事曆選項的視窗
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
@@ -1128,15 +1149,15 @@
                             end = start;
                         } else if (type === 'gantt') {
                             title = `[專案排程] ${item.name}`;
-                            details = `負責人: ${item.assignee || '未指派'}\n進度: ${item.progress}%`;
+                            details = `負責人: ${item.assignee || '未指派'}\n進度: ${item.progress}%\n備註: ${item.note || '無'}`;
                             start = item.start;
                             end = utils.addWorkingDays(item.start, item.duration);
                         }
                         
-                        // 開啟選擇日曆的 Modal - 改為使用 id 來綁定事件
+                        // 開啟選擇日曆的 Modal，移除直接寫死的 onclick 避免變數範圍錯誤
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
-                                <button id="btn-google-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm w-full">
+                                <button id="btn-google-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm">
                                     <div class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center flex-shrink-0">
                                         <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" class="w-6 h-6">
                                     </div>
@@ -1146,7 +1167,7 @@
                                     </div>
                                 </button>
                                 
-                                <button id="btn-apple-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-left shadow-sm w-full">
+                                <button id="btn-apple-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-left shadow-sm">
                                     <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center flex-shrink-0">
                                         <i class="ph-fill ph-apple-logo text-2xl"></i>
                                     </div>
@@ -1156,7 +1177,7 @@
                                     </div>
                                 </button>
 
-                                <button id="btn-outlook-calendar" class="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm w-full">
+                                <button id="btn-outlook-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm">
                                     <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
                                         <i class="ph-fill ph-microsoft-outlook text-2xl"></i>
                                     </div>
@@ -1170,21 +1191,15 @@
                         
                         window.modal.open('加入行事曆', html, `<button onclick="window.modal.close()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">關閉</button>`);
                         
-                        // 等待 Modal 渲染完成後綁定事件
+                        // 動態綁定事件，避免字串渲染找不到函數的問題
                         setTimeout(() => {
-                            const btnGoogle = document.getElementById('btn-google-calendar');
-                            const btnApple = document.getElementById('btn-apple-calendar');
-                            const btnOutlook = document.getElementById('btn-outlook-calendar');
-
-                            if (btnGoogle) {
-                                btnGoogle.onclick = () => window.utils.openGoogleCalendar(title, details, start, end);
-                            }
-                            if (btnApple) {
-                                btnApple.onclick = () => window.utils.generateICS(title, details, start, end);
-                            }
-                            if (btnOutlook) {
-                                btnOutlook.onclick = () => window.utils.generateICS(title, details, start, end);
-                            }
+                            const btnG = document.getElementById('btn-google-calendar');
+                            const btnA = document.getElementById('btn-apple-calendar');
+                            const btnO = document.getElementById('btn-outlook-calendar');
+                            
+                            if (btnG) btnG.addEventListener('click', () => window.utils.openGoogleCalendar(title, details, start, end));
+                            if (btnA) btnA.addEventListener('click', () => window.utils.generateICS(title, details, start, end));
+                            if (btnO) btnO.addEventListener('click', () => window.utils.generateICS(title, details, start, end));
                         }, 50);
                     },
 
@@ -1317,6 +1332,7 @@
                     const parentOpts = [{v: '', l: '無 (設為頂層任務)'}, ...potentialParents.map(p => ({v: p.id, l: p.name}))];
                     fields = [
                         { label: '任務名稱', name: 'name', val: item.name, placeholder: '輸入任務名稱...' },
+                        { label: '備註', name: 'note', val: item.note, placeholder: '輸入備註事項 (選填)...' },
                         { label: '父任務 (群組)', name: 'parentId', type: 'select', opts: parentOpts, val: item.parentId || '' },
                         { label: '負責人', name: 'assignee', val: item.assignee, placeholder: '例如: 小王' },
                         { label: '開始日期', name: 'start', type: 'date', val: item.start || utils.date() },
