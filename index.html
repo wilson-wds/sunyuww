@@ -199,6 +199,18 @@
                 position: static !important;
                 box-shadow: none !important;
             }
+
+            /* 新增：列印時隱藏未輸入備註時的 placeholder 文字 */
+            input::placeholder {
+                color: transparent !important;
+            }
+            
+            /* 確保 input 在列印時是完全透明無邊框的狀態 */
+            input {
+                background-color: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
         }
     </style>
 </head>
