@@ -139,6 +139,24 @@
         .collapse-arrow i { transition: transform 0.2s; font-size: 14px; }
         .collapsed .collapse-arrow i { transform: rotate(-90deg); }
 
+        /* 行內備註多行輸入樣式 */
+        .inline-note-textarea {
+            resize: none;
+            overflow-y: auto;
+            line-height: 1.4;
+            height: 24px; /* 預設高度接近單行 */
+            min-height: 24px;
+        }
+        .inline-note-textarea:focus {
+            height: auto; /* focus 時允許長高一點點 */
+            max-height: 40px; /* 但限制最大高度，避免撐破版面 */
+            position: absolute; /* focus 時浮動，不擠壓其他元素 */
+            z-index: 60;
+            width: calc(100% - 100px); /* 預留右側按鈕空間 */
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
         @media print {
             .no-print { display: none !important; }
             .print-show { display: block !important; }
@@ -201,12 +219,12 @@
             }
 
             /* 新增：列印時隱藏未輸入備註時的 placeholder 文字 */
-            input::placeholder {
+            textarea::placeholder, input::placeholder {
                 color: transparent !important;
             }
             
-            /* 確保 input 在列印時是完全透明無邊框的狀態 */
-            input {
+            /* 確保 input/textarea 在列印時是完全透明無邊框的狀態 */
+            input, textarea.inline-note-textarea {
                 background-color: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
@@ -991,15 +1009,14 @@
                                         <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
                                     </div>
                                     
-                                    <!-- 新增：行內備註輸入框 -->
-                                    <input type="text" 
-                                           class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20" 
+                                    <!-- 新增：多行行內備註輸入框 -->
+                                    <textarea
+                                           class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20 inline-note-textarea" 
                                            placeholder="新增備註" 
-                                           value="${t.note || ''}"
-                                           title="點擊新增/編輯備註"
+                                           title="點擊新增/編輯備註 (可輸入多行)"
                                            onclick="event.stopPropagation();"
                                            onchange="window.app.handlers.updateNote('${t.id}', this.value)"
-                                           onkeydown="if(event.key === 'Enter') this.blur();">
+                                           onkeydown="if(event.key === 'Escape') this.blur();">${t.note || ''}</textarea>
 
                                     <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
                                     ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg flex-shrink-0"></i>' : ''}
@@ -1344,7 +1361,7 @@
                     const parentOpts = [{v: '', l: '無 (設為頂層任務)'}, ...potentialParents.map(p => ({v: p.id, l: p.name}))];
                     fields = [
                         { label: '任務名稱', name: 'name', val: item.name, placeholder: '輸入任務名稱...' },
-                        { label: '備註', name: 'note', val: item.note, placeholder: '輸入備註事項 (選填)...' },
+                        { label: '備註', name: 'note', type: 'textarea', val: item.note, placeholder: '輸入備註事項 (可多行)...' },
                         { label: '父任務 (群組)', name: 'parentId', type: 'select', opts: parentOpts, val: item.parentId || '' },
                         { label: '負責人', name: 'assignee', val: item.assignee, placeholder: '例如: 小王' },
                         { label: '開始日期', name: 'start', type: 'date', val: item.start || utils.date() },
