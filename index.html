@@ -296,7 +296,7 @@
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Config & Utils ---
-        // 動態取得環境設定以符合安全規範
+        // 動態取得環境設定以符合安全規範 (恢復原本正確的設定方式)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'factory-management';
         const fallbackConfig = {"apiKey":"AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q","authDomain":"sunyu-check.firebaseapp.com","projectId":"sunyu-check","storageBucket":"sunyu-check.appspot.com","messagingSenderId":"627211744361","appId":"1:627211744361:web:58bce4b5009f0c9d5bdef8"};
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackConfig;
@@ -434,7 +434,7 @@
                     onAuthStateChanged(this.auth, async (u) => {
                         this.user = u;
                         if(u) {
-                            // 遵循嚴格的系統路徑規則以避免權限錯誤
+                            // 恢復原本正確且有權限的系統路徑規則
                             this.coll = collection(this.db, 'artifacts', appId, 'public', 'data', 'factoryItems');
                             utils.$('#auth-status').textContent = `使用者: ${this.user.uid.slice(0,4)}..`;
                             resolve(this.user);
