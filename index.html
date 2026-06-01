@@ -49,8 +49,8 @@
         /* Corner 加深 - 改為 #cbd5e1 (Slate-300) */
         .sticky-corner { position: sticky; left: 0; top: 0; z-index: 40; background: #cbd5e1; border-right: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; }
 
-        /* 表格線條與互動 */
-        .gantt-row { border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease; height: 48px; /* 稍微增高行高以適應大字體 */ }
+        /* 表格線條與互動 - 更新：讓列高可以彈性伸展以適應多行備註 */
+        .gantt-row { border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease; min-height: 48px; height: 100%; }
         .gantt-cell-border { border-right: 1px solid #f1f5f9; }
         .gantt-timeline-cell { flex-shrink: 0; border-right: 1px dashed #94a3b8; text-align: center; position: relative; height: 100%; }
         /* 週末顏色微調以配合較深的 Header */
@@ -218,11 +218,6 @@
                 box-shadow: none !important;
             }
 
-            /* 新增：列印時隱藏未輸入備註時的 placeholder 文字 */
-            textarea::placeholder, input::placeholder {
-                color: transparent !important;
-            }
-            
             /* 確保 input/textarea 在列印時是完全透明無邊框的狀態 */
             input, textarea.inline-note-textarea {
                 background-color: transparent !important;
@@ -1009,16 +1004,19 @@
                                         <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
                                     </div>
                                     
-                                    <!-- 新增：多行行內備註輸入框 -->
+                                    <!-- 螢幕顯示：多行行內備註輸入框 -->
                                     <textarea
-                                           class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20 inline-note-textarea" 
+                                           class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20 inline-note-textarea print:hidden" 
                                            placeholder="新增備註" 
                                            title="點擊新增/編輯備註 (可輸入多行)"
                                            onclick="event.stopPropagation();"
                                            onchange="window.app.handlers.updateNote('${t.id}', this.value)"
                                            onkeydown="if(event.key === 'Escape') this.blur();">${t.note || ''}</textarea>
+                                           
+                                    <!-- 列印專用：隱藏 DIV，確保能自動換行並撐高排程列的高度 -->
+                                    <div class="hidden print:block flex-1 w-0 min-w-[30px] mx-2 text-[13px] text-slate-700 py-1 whitespace-pre-wrap break-words">${t.note || ''}</div>
 
-                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
+                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0 print:hidden" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
                                     ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg flex-shrink-0"></i>' : ''}
                                     <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
                                 </div>
@@ -1038,7 +1036,7 @@
                             </div>
                             
                             <!-- Timeline Row -->
-                            <div class="relative h-[48px] border-b border-slate-100 bg-white group-hover:bg-slate-50/50 gantt-timeline-row">
+                            <div class="relative min-h-[48px] h-full border-b border-slate-100 bg-white group-hover:bg-slate-50/50 gantt-timeline-row">
                                 ${timelineDays.map((td, i) => {
                                     const isT = td.date.toDateString() === today.toDateString();
                                     return `<div class="absolute top-0 bottom-0 border-r border-slate-100/50 ${td.isWeekend ? 'weekend' : ''} ${isT ? 'bg-red-50/20' : ''}" style="left:${i * this.zoom}px; width:${this.zoom}px; z-index: 0;"></div>`
