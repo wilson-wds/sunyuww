@@ -39,7 +39,7 @@
         }
 
         .sticky-left { position: sticky; left: 0; z-index: 20; background: white; border-right: 1px solid #cbd5e1; box-shadow: 2px 0 5px rgba(0,0,0,0.02); }
-        .sticky-header { position: sticky; top: 0; z-index: 30; background: #cbd5e1; border-bottom: 1px solid #94a3b8; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .sticky-header { position: sticky top: 0; z-index: 30; background: #cbd5e1; border-bottom: 1px solid #94a3b8; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .sticky-corner { position: sticky; left: 0; top: 0; z-index: 40; background: #cbd5e1; border-right: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; }
 
         .gantt-row { border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease; min-height: 48px; height: 100%; }
@@ -228,10 +228,12 @@
             cols: {
                 todo: [
                     { k: 'status', l: '狀態', w: '110px', render: r => r.completed ? '<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200"><i class="ph-fill ph-check-circle"></i>已完成</span>' : '<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-600 border border-blue-200"><i class="ph-fill ph-hourglass"></i>待處理</span>' },
-                    { k: 'productionId', l: '生產編號', w: '130px' }, 
-                    { k: 'partNumber', l: '料號', w: '130px' }, 
+                    { k: 'productionId', l: '生產編號', w: '110px' }, 
+                    { k: 'assemblyNumber', l: '組裝編號', w: '110px' }, 
+                    { k: 'partNumber', l: '料號', w: '110px' }, 
+                    { k: 'modTypes', l: '修改類型', w: '160px', render: r => (r.modTypes || []).length > 0 ? (r.modTypes).map(t => `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-bold mr-1 mb-1 border border-indigo-100">${t}</span>`).join('') : '<span class="text-slate-300">-</span>' },
                     { k: 'content', l: '修改內容', w: 'auto' },
-                    { k: 'date', l: '日期', w: '130px' },
+                    { k: 'date', l: '日期', w: '110px' },
                     { k: 'actions', l: '操作', type: 'actions', w: '150px' }
                 ],
                 event: [
@@ -396,11 +398,9 @@
         const db = new FirestoreService();
         window.db = db;
 
-        // 預留為空，Canvas 預覽環境會自動注入系統金鑰。若您要下載到自己的電腦執行，請在此填入 'AIzaSy...' 開頭的標準金鑰
         const AI_KEY = ""; 
         const aiService = {
             async call(prompt, isJson = false) {
-                // 依據預覽環境規範，使用專屬支援的模型 gemini-2.5-flash-preview-09-2025
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${AI_KEY}`;
                 const body = { contents: [{ parts: [{ text: prompt }] }] };
                 
@@ -425,7 +425,6 @@
                             return data.candidates[0].content.parts[0].text;
                         } else {
                             lastError = data.error?.message || "API 回傳錯誤";
-                            // 若是 400 錯誤(例如參數錯誤)或金鑰無效等客戶端錯誤，直接中斷不重試
                             if (res.status >= 400 && res.status < 500 && res.status !== 429) {
                                 return { error: true, message: lastError };
                             }
@@ -571,8 +570,11 @@
                         <table class="min-w-full divide-y divide-slate-200">
                             <thead class="bg-slate-200"><tr>${cols.map(c => `<th class="px-6 py-4 text-left text-sm font-bold text-slate-700 uppercase tracking-wider">${c.l}</th>`).join('')}</tr></thead>
                             <tbody class="divide-y divide-slate-100 bg-white">
-                                ${items.map(item => `
-                                    <tr class="hover:bg-slate-50 transition-colors group">
+                                ${items.map(item => {
+                                    // 判斷是否為已完成/結案狀態，若是則將該行變灰且沉底
+                                    const isDone = item.completed || item.closed || item.status === '已結案';
+                                    return `
+                                    <tr class="hover:bg-slate-50 transition-colors group ${isDone ? 'opacity-50 bg-slate-50/50 grayscale' : ''}">
                                         ${cols.map(c => {
                                             if (c.type === 'actions') return `
                                                 <td class="px-6 py-4 whitespace-nowrap text-base font-medium opacity-0 group-hover:opacity-100 transition-opacity">
@@ -589,7 +591,7 @@
                                             return `<td class="px-6 py-4 text-base text-slate-700" style="${c.w ? `min-width:${c.w}`:''}">${c.render ? c.render(item) : (item[c.k] || '<span class="text-slate-300">-</span>')}</td>`;
                                         }).join('')}
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -608,7 +610,16 @@
                             }).join('')}</select><div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><i class="ph-bold ph-caret-down text-lg"></i></div></div>`
                             : f.type === 'textarea' 
                                 ? `<textarea name="${f.name}" rows="4" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 text-base transition-colors" placeholder="請輸入${f.label}...">${f.val||''}</textarea>`
-                                : `<input type="${f.type||'text'}" name="${f.name}" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 text-base transition-colors" value="${f.val||''}" placeholder="${f.placeholder||''}">`
+                                : f.type === 'checkboxes'
+                                    ? `<div class="flex flex-wrap gap-2 mt-1">
+                                        ${f.opts.map(o => `
+                                            <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors border border-slate-200 hover:border-slate-300 bg-white shadow-sm">
+                                                <input type="checkbox" name="${f.name}" value="${o}" ${(f.val||[]).includes(o)?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
+                                                <span class="text-sm font-bold text-slate-700">${o}</span>
+                                            </label>
+                                        `).join('')}
+                                       </div>`
+                                    : `<input type="${f.type||'text'}" name="${f.name}" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 text-base transition-colors" value="${f.val||''}" placeholder="${f.placeholder||''}">`
                         }
                     </div>
                 `).join('');
@@ -990,10 +1001,23 @@
                         try { await db.add({ type: 'gantt', ...payload }); window.modal.close(); utils.toast('已複製', '📋'); } catch(e) { utils.toast('複製失敗', '❌'); }
                     },
                     save: async (id, type) => {
-                        const payload = Object.fromEntries(new FormData(utils.$('#edit-form')));
-                        if(type === 'gantt') { payload.duration = parseInt(payload.duration)||1; payload.progress = parseInt(payload.progress)||0; payload.order = parseInt(payload.order)||0; if (payload.parentId === "") payload.parentId = null; payload.suspended = utils.$('#edit-form [name=suspended]')?.checked || false; }
-                        if(type==='todo') payload.completed = utils.$('#edit-form [name=completed]')?.checked || false; 
-                        if(type==='event') payload.closed = utils.$('#edit-form [name=closed]')?.checked || false; 
+                        const form = utils.$('#edit-form');
+                        const formData = new FormData(form);
+                        const payload = Object.fromEntries(formData);
+
+                        if(type === 'todo') {
+                            payload.modTypes = formData.getAll('modTypes'); // 獲取多選陣列
+                            payload.completed = form.querySelector('[name=completed]')?.checked || false; 
+                        } else if(type === 'gantt') { 
+                            payload.duration = parseInt(payload.duration)||1; 
+                            payload.progress = parseInt(payload.progress)||0; 
+                            payload.order = parseInt(payload.order)||0; 
+                            if (payload.parentId === "") payload.parentId = null; 
+                            payload.suspended = form.querySelector('[name=suspended]')?.checked || false; 
+                        } else if(type==='event') {
+                            payload.closed = form.querySelector('[name=closed]')?.checked || false; 
+                        }
+
                         try { id ? await db.update(id, payload) : await db.add({ type, ...payload }); window.modal.close(); } catch(e) { utils.toast('儲存失敗', '❌'); }
                     }
                 };
@@ -1014,8 +1038,18 @@
                 let scrollTop = 0, scrollLeft = 0;
                 if (view && !view.classList.contains('hidden')) { scrollTop = view.scrollTop; scrollLeft = view.scrollLeft; }
                 document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); view.classList.remove('hidden');
-                const items = this.data.filter(i => i.type === this.currentTab);
                 
+                let items = this.data.filter(i => i.type === this.currentTab);
+                
+                // 自定義排序：若有已完成/已結案的項目，自動沉到列表最下方
+                if (this.currentTab === 'todo') {
+                    items.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+                } else if (this.currentTab === 'event') {
+                    items.sort((a, b) => (a.closed === b.closed ? 0 : a.closed ? 1 : -1));
+                } else if (this.currentTab === 'feedback') {
+                    items.sort((a, b) => (a.status === '已結案' && b.status !== '已結案' ? 1 : a.status !== '已結案' && b.status === '已結案' ? -1 : 0));
+                }
+
                 if (['todo', 'event', 'feedback'].includes(this.currentTab)) {
                     view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
                     requestAnimationFrame(() => { view.scrollTop = scrollTop; view.scrollLeft = scrollLeft; });
@@ -1024,7 +1058,14 @@
             openEditModal(type, id = null) {
                 const item = id ? this.data.find(i => i.id === id) : {};
                 let fields = [];
-                if (type === 'todo') fields = [{ label: '生產編號', name: 'productionId', val: item.productionId }, { label: '料號', name: 'partNumber', val: item.partNumber }, { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }];
+                if (type === 'todo') fields = [
+                    { label: '生產編號', name: 'productionId', val: item.productionId }, 
+                    { label: '組裝編號', name: 'assemblyNumber', val: item.assemblyNumber }, // 新增組裝編號
+                    { label: '料號', name: 'partNumber', val: item.partNumber }, 
+                    { label: '修改類型', name: 'modTypes', type: 'checkboxes', opts: ['改版', '換圖', 'BOM修改', '其他'], val: item.modTypes || [] }, // 新增修改類型勾選
+                    { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, 
+                    { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }
+                ];
                 if (type === 'event') fields = [{ label: '事件日期', name: 'date', type: 'date', val: item.date || utils.date() }, { label: '事項內容', name: 'matter', val: item.matter }, { label: '相關人員', name: 'personnel', val: item.personnel }, { label: '優先程度', name: 'priority', type: 'select', opts: [{v:'high',l:'🔴 緊急'},{v:'medium',l:'🟠 一般'},{v:'low',l:'🟢 低'}], val: item.priority || 'medium' }];
                 if (type === 'feedback') fields = [{ label: '反饋類型', name: 'feedbackType', type: 'select', opts: ['硬體','軟體','流程','其他'], val: item.feedbackType }, { label: '問題描述', name: 'problem', type: 'textarea', val: item.problem }, { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }];
                 if (type === 'gantt') {
