@@ -396,36 +396,53 @@
         const db = new FirestoreService();
         window.db = db;
 
-        const AI_KEY = "AIzaSyAMLUQZUjQe451CGFgj-R0zb4ZS34nOAA8";
+        // 預留為空，Canvas 預覽環境會自動注入系統金鑰。若您要下載到自己的電腦執行，請在此填入 'AIzaSy...' 開頭的標準金鑰
+        const AI_KEY = ""; 
         const aiService = {
             async call(prompt, isJson = false) {
-                // 修正：將模型名稱更改為正確的 gemini-1.5-flash-latest
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${AI_KEY}`;
+                // 依據預覽環境規範，使用專屬支援的模型 gemini-2.5-flash-preview-09-2025
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${AI_KEY}`;
                 const body = { contents: [{ parts: [{ text: prompt }] }] };
                 
-                // 修正：Gemini 官方 API 是使用 responseMimeType (駝峰命名法)
-                if(isJson) body.generationConfig = { responseMimeType: "application/json" };
+                if (isJson) {
+                    body.generationConfig = { responseMimeType: "application/json" };
+                }
                 
-                try {
-                    const res = await fetch(url, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(body) 
-                    });
-                    
-                    const data = await res.json();
-                    
-                    // 新增：捕捉 API 本身的錯誤 (例如：金鑰權限不符、模型名稱錯誤等)
-                    if (!res.ok) {
-                        console.error("Gemini API 回傳錯誤:", data);
-                        return { error: true, message: data.error?.message || "未知的 API 回傳錯誤" };
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                let lastError = "未知的錯誤";
+
+                for (let attempt = 0; attempt <= 5; attempt++) {
+                    try {
+                        const res = await fetch(url, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify(body) 
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if (res.ok && data.candidates) {
+                            return data.candidates[0].content.parts[0].text;
+                        } else {
+                            lastError = data.error?.message || "API 回傳錯誤";
+                            // 若是 400 錯誤(例如參數錯誤)或金鑰無效等客戶端錯誤，直接中斷不重試
+                            if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+                                return { error: true, message: lastError };
+                            }
+                        }
+                    } catch(e) {
+                        lastError = "網路連線異常，或受到跨來源 (CORS) 阻擋";
                     }
                     
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text;
-                } catch(e) {
-                    console.error("AI 網路連線錯誤:", e);
-                    return { error: true, message: "網路連線異常，或可能受到跨來源 (CORS) 阻擋" };
+                    if (attempt < 5) {
+                        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                    }
                 }
+                
+                return { 
+                    error: true, 
+                    message: `API 呼叫失敗，錯誤原因：${lastError}。請確認是否在正確的環境執行。` 
+                };
             },
             openMenu() {
                 const html = `
@@ -476,7 +493,7 @@
                     utils.$('#modal-body').innerHTML = `<div class="text-slate-700 leading-relaxed">${result.replace(/```html|```/g, '')}</div>`;
                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">回上一步</button><button onclick="window.modal.close()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors">完成</button>`;
                 } else if (result && result.error) {
-                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm">${result.message}</span></div>`;
+                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
                 } else {
                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 font-bold text-center py-10">分析失敗，未知的錯誤發生。</div>`;
@@ -489,13 +506,13 @@
                 if(!projectName) { utils.toast('請輸入專案名稱', '⚠️'); return; }
                 utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-bold ph-magic-wand text-5xl text-blue-500 animate-bounce mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在規劃「${projectName}」...</h3><p class="text-slate-500 text-sm mt-2">自動拆解子任務與估算工期中</p></div>`;
                 utils.$('#modal-footer').innerHTML = '';
-                const prompt = `你是一個專業的工廠生產排程專家。我現在要啟動一個新專案：「${projectName}」。請幫我把這個專案拆解成 3 到 5 個連續執行的子任務。回傳格式必須是嚴格的 JSON Array，不要任何其他文字。每個 JSON 物件要有以下欄位："name": 任務名稱(字串), "duration": 預估工作天數(整數), "assignee": 建議指派對象(例如：廠務、工程師 等字串)`;
+                const prompt = `你是一個專業的工廠生產排程專家。我現在要啟動一個新專案：「${projectName}」。請幫我把這個專案拆解成 3 到 5 個連續執行的子任務。回傳格式必須是嚴格的 JSON Array，不要包含任何 markdown 標記或其他文字。每個 JSON 物件要有以下欄位："name": 任務名稱(字串), "duration": 預估工作天數(整數), "assignee": 建議指派對象(例如：廠務、工程師 等字串)`;
                 
                 const result = await this.call(prompt, true);
                 
                 if (typeof result === 'string') {
                     try {
-                        const tasks = JSON.parse(result.replace(/```json|```/g, ''));
+                        const tasks = JSON.parse(result.replace(/```json|```/g, '').trim());
                         if(tasks && tasks.length > 0) {
                             const parentId = await window.db.add({ type: 'gantt', name: projectName, parentId: null, assignee: '', start: utils.date(), duration: 1, progress: 0, order: 99 }, true);
                             let currentStart = utils.date();
@@ -508,11 +525,11 @@
                             window.app.switchTab('gantt');
                         }
                     } catch(e) {
-                        utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>生成失敗，AI 回傳格式異常。</b><br><span class="text-xs text-slate-400 mt-2 block break-all">${result}</span></div>`;
+                        utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>生成失敗，AI 回傳格式異常。</b><br><span class="text-xs text-slate-400 mt-2 block break-all text-left max-h-32 overflow-y-auto">${result}</span></div>`;
                         utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
                     }
                 } else if (result && result.error) {
-                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm">${result.message}</span></div>`;
+                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
                      utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
                 } else {
                      utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10">生成失敗，未知的錯誤發生。</div>`;
@@ -879,7 +896,7 @@
                                     </select>
                                     <i class="ph-bold ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                                 </div>
-                                <!-- 新增：Gemini 智能助理按鈕 -->
+                                <!-- Gemini 智能助理按鈕 -->
                                 <button onclick="window.ai.openMenu()" class="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-md text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow font-bold">
                                     <i class="ph-fill ph-sparkle text-lg animate-pulse"></i> AI 助理
                                 </button>
