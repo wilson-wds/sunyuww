@@ -232,23 +232,23 @@
                         l: '狀態', 
                         w: '140px', 
                         render: r => r.completed 
-                            // 已完成：螢幕顯示可點擊的按鈕，列印時顯示實體勾選框
+                            // 已完成：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
                             ? `<div class="print:hidden">
                                  <button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為待處理">
                                    <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已完成
                                  </button>
                                </div>
                                <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
-                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>已完成
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>完成請打勾
                                </div>` 
-                            // 待處理：螢幕顯示可點擊的按鈕，列印時顯示空白方框供工程員勾選
+                            // 待處理：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
                             : `<div class="print:hidden">
                                  <button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為完成">
                                    <i class="ph-bold ph-square text-lg text-blue-500 group-hover:scale-110 transition-transform"></i>待處理
                                  </button>
                                </div>
                                <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
-                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>工程員簽收
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>完成請打勾
                                </div>` 
                     },
                     { k: 'productionId', l: '生產編號', w: '110px' }, 
