@@ -162,7 +162,7 @@
             .print-show { display: block !important; }
             
             /* 關鍵修正：強制重置所有外層容器的高度與溢出設定，避免內容被截斷或隱藏 */
-            body, main, #app-container, #view-gantt, #view-private-gantt { 
+            body, main, #app-container, #view-gantt { 
                 height: auto !important; 
                 overflow: visible !important; 
                 display: block !important;
@@ -171,7 +171,7 @@
             }
             
             /* 針對 JS 動態生成的內部容器進行重置 */
-            #view-gantt > div, #view-private-gantt > div {
+            #view-gantt > div {
                 height: auto !important;
                 overflow: visible !important;
                 display: block !important; /* 避免 flex 造成的分頁問題 */
@@ -255,14 +255,6 @@
                 <button onclick="window.app.switchTab('gantt')" class="nav-btn w-full text-left px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3 text-base" data-tab="gantt">
                     <i class="ph ph-chart-bar text-xl"></i> 周計畫排程
                 </button>
-                <!-- 新增：私人排程 -->
-                <div class="pt-4 pb-1">
-                    <div class="h-px bg-slate-800 w-full mb-3"></div>
-                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2">個人專區</div>
-                </div>
-                <button onclick="window.app.switchTab('private-gantt')" class="nav-btn w-full text-left px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3 text-base" data-tab="private-gantt">
-                    <i class="ph ph-lock-key text-xl text-amber-500"></i> 私人排程
-                </button>
             </nav>
         </div>
         
@@ -305,8 +297,6 @@
             <div id="view-feedback" class="view-section space-y-4 hidden p-6 overflow-auto h-full"></div>
             <!-- Gantt View -->
             <div id="view-gantt" class="view-section hidden h-full flex flex-col"></div>
-            <!-- Private Gantt View -->
-            <div id="view-private-gantt" class="view-section hidden h-full flex flex-col"></div>
         </div>
     </main>
 
@@ -321,28 +311,6 @@
             </div>
             <div id="modal-body" class="p-8 overflow-y-auto custom-scrollbar"></div>
             <div id="modal-footer" class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl"></div>
-        </div>
-    </div>
-
-    <!-- 密碼輸入 Modal (不允許點擊背景關閉) -->
-    <div id="password-modal" class="fixed inset-0 bg-slate-900/80 z-[70] hidden items-center justify-center p-4 no-print backdrop-blur-md transition-all duration-300 opacity-0" aria-hidden="true">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm transform transition-all scale-95 duration-200 border border-slate-100 overflow-hidden">
-            <div class="p-8 text-center relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
-                <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="ph-fill ph-lock-key text-3xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-slate-800 mb-2">私人專區</h3>
-                <p class="text-slate-500 text-sm mb-6">請輸入密碼以存取您的私人排程</p>
-                <div class="mb-6">
-                    <input type="password" id="private-password-input" class="w-full text-center tracking-[0.5em] text-2xl border-2 border-slate-200 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-0 focus:border-amber-500 outline-none font-mono transition-colors" placeholder="****">
-                    <p id="password-error" class="text-red-500 text-sm mt-2 font-medium hidden">密碼錯誤，請重試</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="window.app.cancelPrivateLogin()" class="flex-1 px-4 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors text-base">取消</button>
-                    <button onclick="window.app.verifyPrivateLogin()" class="flex-1 px-4 py-3 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 shadow-md hover:shadow-lg transition-all text-base">登入</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -362,7 +330,6 @@
         const CONFIG = {
             firebase: JSON.parse(`{"apiKey":"AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q","authDomain":"sunyu-check.firebaseapp.com","projectId":"sunyu-check","storageBucket":"sunyu-check.appspot.com","messagingSenderId":"627211744361","appId":"1:627211744361:web:58bce4b5009f0c9d5bdef8"}`),
             appId: "sunyu-check",
-            privatePassword: "0000", // <--- 預設私人排程密碼
             cols: {
                 todo: [
                     { k: 'status', l: '狀態', w: '110px', render: r => r.completed ? '<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200"><i class="ph-fill ph-check-circle"></i>已完成</span>' : '<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-600 border border-blue-200"><i class="ph-fill ph-hourglass"></i>待處理</span>' },
@@ -473,12 +440,8 @@
                 const app = initializeApp(CONFIG.firebase);
                 this.auth = getAuth(app);
                 this.db = getFirestore(app);
-                this.publicColl = null; 
-                this.privateColl = null;
+                this.coll = null; 
                 this.user = null;
-                
-                this.publicUnsubscribe = null;
-                this.privateUnsubscribe = null;
             }
             async init() {
                 return new Promise(resolve => {
@@ -501,60 +464,39 @@
                     onAuthStateChanged(this.auth, async (u) => {
                         this.user = u;
                         if(u) {
-                            this.publicColl = collection(this.db, `/artifacts/${CONFIG.appId}/public/data/sharedTodoItems`);
-                            this.privateColl = collection(this.db, `/artifacts/${CONFIG.appId}/public/data/privateGanttItems`); // 使用獨立的 Collection 存私人資料
+                            this.coll = collection(this.db, `/artifacts/${CONFIG.appId}/public/data/sharedTodoItems`);
                             utils.$('#auth-status').textContent = `使用者: ${this.user.uid.slice(0,4)}..`;
                             resolve(this.user);
                         }
                     });
                 });
             }
-            sub(cb, isPrivate = false) {
-                const coll = isPrivate ? this.privateColl : this.publicColl;
-                if (!coll) return;
-                
-                // 取消先前的訂閱，避免重複觸發
-                if (isPrivate && this.privateUnsubscribe) this.privateUnsubscribe();
-                if (!isPrivate && this.publicUnsubscribe) this.publicUnsubscribe();
-
-                const unsubscribe = onSnapshot(query(coll, orderBy("createdAt", "desc")), (snap) => {
+            sub(cb) {
+                if (!this.coll) return;
+                return onSnapshot(query(this.coll, orderBy("createdAt", "desc")), (snap) => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     cb(data);
                 }, (error) => {
                     console.error("Firestore error:", error);
                     utils.toast('連線中斷，請重新整理', '⚠️');
                 });
-                
-                if (isPrivate) this.privateUnsubscribe = unsubscribe;
-                else this.publicUnsubscribe = unsubscribe;
             }
-            async add(data, isPrivate = false) { 
-                if(!this.user) return; 
-                const coll = isPrivate ? this.privateColl : this.publicColl;
-                await addDoc(coll, { ...data, createdAt: serverTimestamp() }); 
-                utils.toast('新增成功'); 
-            }
-            async update(id, data, isPrivate = false) { 
-                if(!this.user) return; 
-                const coll = isPrivate ? this.privateColl : this.publicColl;
-                await updateDoc(doc(coll, id), data); 
-            }
-            async del(id, isPrivate = false) { 
+            async add(data) { if(!this.user) return; await addDoc(this.coll, { ...data, createdAt: serverTimestamp() }); utils.toast('新增成功'); }
+            async update(id, data) { if(!this.user) return; await updateDoc(doc(this.coll, id), data); }
+            async del(id) { 
                 if(!this.user) return;
-                const coll = isPrivate ? this.privateColl : this.publicColl;
                 if(confirm('確定要刪除此項目嗎？如果這是父任務，建議先移除子任務的關聯。')) { 
-                    await deleteDoc(doc(coll, id)); 
+                    await deleteDoc(doc(this.coll, id)); 
                     utils.toast('已刪除', '🗑️'); 
                     return true;
                 }
                 return false;
             }
-            async batchUpdateOrders(updates, isPrivate = false) {
+            async batchUpdateOrders(updates) {
                 if(!this.user) return;
-                const coll = isPrivate ? this.privateColl : this.publicColl;
                 const batch = writeBatch(this.db);
                 updates.forEach(({id, order}) => {
-                    const ref = doc(coll, id);
+                    const ref = doc(this.coll, id);
                     batch.update(ref, { order });
                 });
                 await batch.commit();
@@ -649,10 +591,7 @@
 
         // --- Enhanced Gantt Manager ---
         class GanttManager {
-            constructor(containerId, isPrivate = false) {
-                this.containerId = containerId;
-                this.isPrivate = isPrivate; // 標記是否為私人排程
-                
+            constructor() {
                 this.zoom = 42; 
                 this.viewStart = new Date();
                 this.viewStart.setDate(this.viewStart.getDate() - 3); 
@@ -687,14 +626,14 @@
                     const now = new Date();
                     now.setDate(now.getDate() - 2); 
                     this.viewStart = now;
-                    const picker = utils.$(`#gantt-date-picker-${this.isPrivate ? 'private' : 'public'}`);
+                    const picker = utils.$('#gantt-date-picker');
                     if(picker) picker.value = utils.date();
                     app.render();
                     return;
                 }
                 this.viewStart = d;
                 
-                const picker = utils.$(`#gantt-date-picker-${this.isPrivate ? 'private' : 'public'}`);
+                const picker = utils.$('#gantt-date-picker');
                 if(picker) {
                     const centerDate = new Date(this.viewStart);
                     centerDate.setDate(centerDate.getDate() + 2);
@@ -753,7 +692,7 @@
             }
             
             updateLayout() {
-                const container = utils.$(`#${this.containerId}`);
+                const container = utils.$('#view-gantt');
                 if (!container) return;
                 const fixedWidths = 60 + 90 + 90 + 60 + 80 + (this.showProgressCol ? 70 : 0); 
                 const totalGridWidth = this.nameColWidth + fixedWidths;
@@ -788,9 +727,8 @@
                 
                 if (!this.draggedId || this.draggedId === targetId) return;
 
-                const dataSource = this.isPrivate ? app.privateData : app.data;
-                const draggedTask = dataSource.find(t => t.id === this.draggedId);
-                const targetTask = dataSource.find(t => t.id === targetId);
+                const draggedTask = app.data.find(t => t.id === this.draggedId);
+                const targetTask = app.data.find(t => t.id === targetId);
 
                 if (!draggedTask || !targetTask) return;
                 if (draggedTask.parentId !== targetTask.parentId) {
@@ -798,8 +736,7 @@
                     return;
                 }
 
-                const ganttType = this.isPrivate ? 'private-gantt' : 'gantt';
-                const siblings = dataSource.filter(t => t.type === ganttType && t.parentId === draggedTask.parentId).sort((a,b) => (a.order||0) - (b.order||0));
+                const siblings = app.data.filter(t => t.type === 'gantt' && t.parentId === draggedTask.parentId).sort((a,b) => (a.order||0) - (b.order||0));
                 const draggedIdx = siblings.findIndex(t => t.id === this.draggedId);
                 siblings.splice(draggedIdx, 1); 
                 const targetIdx = siblings.findIndex(t => t.id === targetId);
@@ -807,15 +744,14 @@
                 siblings.splice(insertIdx, 0, draggedTask);
 
                 const updates = siblings.map((t, idx) => ({ id: t.id, order: idx }));
-                await db.batchUpdateOrders(updates, this.isPrivate);
+                await db.batchUpdateOrders(updates);
                 this.draggedId = null;
             }
 
             handleBarDragStart(e, id, isSummary) {
                 if (isSummary) { utils.toast('摘要任務由子任務決定', '🔒'); return; }
                 e.preventDefault(); e.stopPropagation(); 
-                const dataSource = this.isPrivate ? app.privateData : app.data;
-                const task = dataSource.find(t => t.id === id);
+                const task = app.data.find(t => t.id === id);
                 if (!task) return;
 
                 const barEl = e.currentTarget;
@@ -838,13 +774,13 @@
                     barEl.style.transform = ''; 
 
                     if (!isDragging) {
-                        window.app.handlers.edit(this.isPrivate ? 'private-gantt' : 'gantt', id);
+                        window.app.handlers.edit('gantt', id);
                     } else {
                         const diff = e.pageX - startX;
                         const daysDiff = Math.round(diff / this.zoom);
                         if (daysDiff !== 0) {
                             const newStart = utils.addDays(task.start, daysDiff);
-                            await db.update(id, { start: newStart }, this.isPrivate);
+                            await db.update(id, { start: newStart });
                             utils.toast(`已移動至 ${newStart}`);
                         }
                     }
@@ -913,7 +849,7 @@
             }
 
             render(allTasks) {
-                const container = utils.$(`#${this.containerId}`);
+                const container = utils.$('#view-gantt');
                 
                 // 紀錄甘特圖捲動位置
                 const ganttScrollContainer = container.querySelector('.gantt-container');
@@ -930,6 +866,7 @@
                     filteredTasks = filteredTasks.filter(t => t.assignee === this.filterAssignee);
                 }
 
+                // 在這裡不再過濾掉日期的任務，讓所有任務都先進入處理，以便左側清單完整顯示
                 const displayTasks = this.processTasks(filteredTasks);
                 const today = new Date();
                 const viewStart = new Date(this.viewStart);
@@ -968,11 +905,10 @@
 
                 const gridTemplate = `60px var(--name-width) 90px 90px 60px 80px ${this.showProgressCol ? '70px' : '0px'}`;
                 let rowsHTML = '';
-                const ganttType = this.isPrivate ? 'private-gantt' : 'gantt'; // 用來分辨事件觸發對象
 
                 if(!displayTasks.length) {
                     rowsHTML = `<div class="p-16 text-center text-slate-400 font-bold col-span-2 bg-white m-4 rounded-lg border-2 border-dashed border-slate-200 text-lg">
-                        <i class="ph ph-calendar-slash text-5xl mb-2"></i><br>目前期間無排程
+                        <i class="ph ph-calendar-slash text-5xl mb-2"></i><br>目前沒有排程資料
                     </div>`;
                 } else {
                     displayTasks.forEach(t => {
@@ -990,6 +926,7 @@
                              if (td.date >= start && td.date <= end) visualDuration++;
                         });
 
+                        // 處理任務開始時間早於當前畫面的情況，但要在畫面上顯示部分進度條
                         if (renderLeft === -1 && end >= timelineDays[0].date) {
                             renderLeft = 0;
                         }
@@ -1002,7 +939,7 @@
 
                         const isOverdue = t.progress < 100 && new Date(t.endDate) < today && !t.isSummary && !t.suspended;
                         
-                        let barColor = this.isPrivate ? 'bg-amber-500' : 'bg-indigo-600'; // 私人排程用橘黃色
+                        let barColor = 'bg-indigo-600';
                         if (t.isSummary) barColor = 'bg-slate-600';
                         else if (t.progress == 100) barColor = 'bg-emerald-500';
                         else if (isOverdue) barColor = 'bg-rose-500';
@@ -1015,7 +952,7 @@
                             barHTML = `
                                 <div class="gantt-bar ${barColor} group-hover:shadow-md"
                                      style="left:${left}px; width:${width - 6}px;"
-                                     onmousedown="window.app.${this.isPrivate?'privateGantt':'gantt'}.handleBarDragStart(event, '${t.id}', ${!!t.isSummary})">
+                                     onmousedown="window.app.gantt.handleBarDragStart(event, '${t.id}', ${!!t.isSummary})">
                                     
                                     ${!t.isSummary ? `
                                         <div class="h-full bg-white/20 absolute left-0 top-0 bottom-0" style="width:${t.progress}%"></div>
@@ -1038,7 +975,6 @@
 
                         const indent = t.level * 18;
                         const isCollapsed = this.collapsedRows.has(t.id);
-                        const jsObj = this.isPrivate ? 'window.app.privateGantt' : 'window.app.gantt';
                         
                         rowsHTML += `
                         <div class="contents group hover:bg-slate-50">
@@ -1046,9 +982,9 @@
                             <div class="gantt-row grid bg-white items-center sticky-left ${t.isSummary ? 'is-parent-row' : ''}" 
                                  style="grid-template-columns: ${gridTemplate};"
                                  draggable="true"
-                                 ondragstart="${jsObj}.handleDragStart(event, '${t.id}')"
-                                 ondragover="${jsObj}.handleDragOver(event, '${t.id}')"
-                                 ondrop="${jsObj}.handleDrop(event, '${t.id}')">
+                                 ondragstart="window.app.gantt.handleDragStart(event, '${t.id}')"
+                                 ondragover="window.app.gantt.handleDragOver(event, '${t.id}')"
+                                 ondrop="window.app.gantt.handleDrop(event, '${t.id}')">
                                 
                                 <div class="px-2 text-sm text-center font-bold text-slate-400 h-full flex items-center justify-center gantt-cell-border draggable-handle cursor-grab">
                                     <i class="ph-bold ph-dots-six-vertical text-lg"></i>
@@ -1057,12 +993,12 @@
                                 <div class="px-2 gantt-cell-border flex items-center h-full overflow-hidden relative group/namecol">
                                     <div style="width:${indent}px" class="flex-shrink-0"></div>
                                     ${t.isSummary ? `
-                                        <div onclick="${jsObj}.toggleCollapse('${t.id}')" class="collapse-arrow mr-1 ${isCollapsed?'collapsed':''}">
+                                        <div onclick="window.app.gantt.toggleCollapse('${t.id}')" class="collapse-arrow mr-1 ${isCollapsed?'collapsed':''}">
                                             <i class="ph-bold ph-caret-down text-slate-500"></i>
                                         </div>
                                     ` : '<div class="w-6"></div>'}
                                     
-                                    <div class="truncate shrink cursor-pointer hover:text-indigo-600 transition-colors py-2" style="max-width: 50%;" onclick="window.app.handlers.edit('${ganttType}', '${t.id}')" title="${t.name}">
+                                    <div class="truncate shrink cursor-pointer hover:text-indigo-600 transition-colors py-2" style="max-width: 50%;" onclick="window.app.handlers.edit('gantt', '${t.id}')" title="${t.name}">
                                         <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
                                     </div>
                                     
@@ -1072,15 +1008,15 @@
                                            placeholder="新增備註" 
                                            title="點擊新增/編輯備註 (可輸入多行)"
                                            onclick="event.stopPropagation();"
-                                           onchange="window.app.handlers.updateNote('${t.id}', this.value, ${this.isPrivate})"
+                                           onchange="window.app.handlers.updateNote('${t.id}', this.value)"
                                            onkeydown="if(event.key === 'Escape') this.blur();">${t.note || ''}</textarea>
                                            
                                     <!-- 列印專用：隱藏 DIV，確保能自動換行並撐高排程列的高度 -->
                                     <div class="hidden print:block flex-1 w-0 min-w-[30px] mx-2 text-[13px] text-slate-700 py-1 whitespace-pre-wrap break-words">${t.note || ''}</div>
 
-                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', '${ganttType}')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0 print:hidden" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
+                                    <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0 print:hidden" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
                                     ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg flex-shrink-0"></i>' : ''}
-                                    <div class="col-resizer" onmousedown="${jsObj}.startResize(event)"></div>
+                                    <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
                                 </div>
 
                                 <!-- 行內編輯: 開始日期 -->
@@ -1092,7 +1028,7 @@
                                         <input type="date" class="hidden w-full h-full bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-xs rounded z-20 print:hidden text-center" 
                                                value="${t.start}" 
                                                onclick="event.stopPropagation();"
-                                               onblur="window.app.handlers.updateField('${t.id}', 'start', this.value, ${this.isPrivate})"
+                                               onblur="window.app.handlers.updateField('${t.id}', 'start', this.value)"
                                                onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">
                                     `)}
                                 </div>
@@ -1109,7 +1045,7 @@
                                         <input type="number" min="1" class="hidden w-full h-8 bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-sm rounded z-20 print:hidden text-center" 
                                                value="${t.duration}" 
                                                onclick="event.stopPropagation();"
-                                               onblur="window.app.handlers.updateField('${t.id}', 'duration', parseInt(this.value) || 1, ${this.isPrivate})"
+                                               onblur="window.app.handlers.updateField('${t.id}', 'duration', parseInt(this.value) || 1)"
                                                onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">
                                     `)}
                                 </div>
@@ -1140,40 +1076,39 @@
                 container.innerHTML = `
                     <div class="flex flex-col h-full bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                         <!-- Toolbar -->
-                        <div class="p-3 border-b border-slate-200 bg-white flex flex-wrap gap-3 items-center justify-between no-print flex-shrink-0 z-40 ${this.isPrivate ? 'border-t-4 border-t-amber-500' : ''}">
+                        <div class="p-3 border-b border-slate-200 bg-white flex flex-wrap gap-3 items-center justify-between no-print flex-shrink-0 z-40">
                             <div class="flex items-center gap-4">
                                 <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
-                                    <button onclick="${jsObj}.setView('prev')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded transition-all"><i class="ph-bold ph-caret-left text-lg"></i></button>
-                                    <button onclick="${jsObj}.setView('today')" class="px-3 h-8 text-sm font-bold text-indigo-600 hover:bg-white hover:shadow rounded transition-all flex items-center gap-1"><i class="ph-bold ph-calendar text-lg"></i> 今天</button>
-                                    <input type="date" id="gantt-date-picker-${this.isPrivate?'private':'public'}" onchange="${jsObj}.setView('date', this.value)" class="h-8 bg-transparent border-0 text-sm font-medium text-slate-600 focus:ring-0 w-[120px]" title="跳轉日期">
-                                    <button onclick="${jsObj}.setView('next')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded transition-all"><i class="ph-bold ph-caret-right text-lg"></i></button>
+                                    <button onclick="window.app.gantt.setView('prev')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded transition-all"><i class="ph-bold ph-caret-left text-lg"></i></button>
+                                    <button onclick="window.app.gantt.setView('today')" class="px-3 h-8 text-sm font-bold text-indigo-600 hover:bg-white hover:shadow rounded transition-all flex items-center gap-1"><i class="ph-bold ph-calendar text-lg"></i> 今天</button>
+                                    <input type="date" id="gantt-date-picker" onchange="window.app.gantt.setView('date', this.value)" class="h-8 bg-transparent border-0 text-sm font-medium text-slate-600 focus:ring-0 w-[120px]" title="跳轉日期">
+                                    <button onclick="window.app.gantt.setView('next')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded transition-all"><i class="ph-bold ph-caret-right text-lg"></i></button>
                                 </div>
                                 <div class="flex items-center gap-1 text-slate-500 px-2 py-1">
-                                    <button onclick="${jsObj}.setZoom(-10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg" title="縮小"><i class="ph ph-minus"></i></button>
+                                    <button onclick="window.app.gantt.setZoom(-10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg" title="縮小"><i class="ph ph-minus"></i></button>
                                     <i class="ph ph-magnifying-glass text-lg"></i>
-                                    <button onclick="${jsObj}.setZoom(10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg" title="放大"><i class="ph ph-plus"></i></button>
+                                    <button onclick="window.app.gantt.setZoom(10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg" title="放大"><i class="ph ph-plus"></i></button>
                                 </div>
                                 <div class="h-6 w-px bg-slate-200 mx-1"></div>
                                 <div class="flex items-center gap-4 text-sm font-medium text-slate-600">
                                     <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800">
-                                        <input type="checkbox" onchange="${jsObj}.toggleCompleted(this.checked)" ${this.hideCompleted?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
+                                        <input type="checkbox" onchange="window.app.gantt.toggleCompleted(this.checked)" ${this.hideCompleted?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
                                         隱藏已完成
                                     </label>
                                     <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800">
-                                        <input type="checkbox" onchange="${jsObj}.toggleWeekends(this.checked)" ${this.hideWeekends?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
+                                        <input type="checkbox" onchange="window.app.gantt.toggleWeekends(this.checked)" ${this.hideWeekends?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
                                         隱藏週末
                                     </label>
                                     <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800">
-                                        <input type="checkbox" onchange="${jsObj}.toggleProgressCol(this.checked)" ${this.showProgressCol?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
+                                        <input type="checkbox" onchange="window.app.gantt.toggleProgressCol(this.checked)" ${this.showProgressCol?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
                                         進度欄
                                     </label>
                                 </div>
                             </div>
                             
                             <div class="flex items-center gap-3">
-                                ${this.isPrivate ? '<div class="text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded flex items-center gap-1"><i class="ph-fill ph-lock-key"></i> 私人區</div>' : ''}
                                 <div class="relative">
-                                    <select onchange="${jsObj}.setFilter(this.value)" class="pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 shadow-sm">
+                                    <select onchange="window.app.gantt.setFilter(this.value)" class="pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 shadow-sm">
                                         <option value="">所有人員</option>
                                         ${assignees.map(p => `<option value="${p}" ${this.filterAssignee===p?'selected':''}>${p}</option>`).join('')}
                                     </select>
@@ -1191,7 +1126,7 @@
                                     <div class="flex items-center justify-center text-sm font-bold text-slate-700">WBS</div>
                                     <div class="flex items-center justify-center text-sm font-bold text-slate-700 header-cell-resizable relative">
                                         任務名稱
-                                        <div class="col-resizer" onmousedown="${jsObj}.startResize(event)"></div>
+                                        <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
                                     </div>
                                     <div class="flex items-center justify-center text-sm font-bold text-slate-700">開始</div>
                                     <div class="flex items-center justify-center text-sm font-bold text-slate-700">結束</div>
@@ -1218,7 +1153,7 @@
                 });
 
                 setTimeout(() => {
-                    const picker = utils.$(`#gantt-date-picker-${this.isPrivate?'private':'public'}`);
+                    const picker = utils.$('#gantt-date-picker');
                     if(picker && !picker.value) {
                          const d = new Date(this.viewStart);
                          d.setDate(d.getDate() + 2);
@@ -1230,55 +1165,41 @@
 
         const app = {
             data: [],
-            privateData: [],
             currentTab: 'todo',
-            gantt: new GanttManager('view-gantt', false),
-            privateGantt: new GanttManager('view-private-gantt', true),
-            isPrivateUnlocked: false,
+            gantt: new GanttManager(),
             
             init() {
                 db.init().then(() => {
-                    // 預設先訂閱公開資料
                     db.sub(data => {
                         this.data = data;
                         utils.$('#loading').classList.add('opacity-0');
                         setTimeout(() => utils.$('#loading').classList.add('hidden'), 500);
                         this.render();
-                    }, false);
+                    });
                 });
                 
                 window.app = this;
-                
-                // 監聽密碼輸入框 Enter 鍵
-                const pwdInput = utils.$('#private-password-input');
-                if(pwdInput) {
-                    pwdInput.addEventListener('keydown', (e) => {
-                        if(e.key === 'Enter') this.verifyPrivateLogin();
-                    });
-                }
-                
                 this.handlers = {
                     del: async (id) => {
-                        const isPrivate = this.currentTab === 'private-gantt';
-                        const success = await db.del(id, isPrivate);
+                        const success = await db.del(id);
                         if(success) window.modal.close();
                     },
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: (id) => this.addToGantt(id),
                     
                     // 行內直接更新備註功能
-                    updateNote: async (id, note, isPrivate = false) => {
-                        try { await db.update(id, { note: note }, isPrivate); } 
+                    updateNote: async (id, note) => {
+                        try { await db.update(id, { note: note }); } 
                         catch(e) { console.error(e); utils.toast('備註更新失敗', '❌'); }
                     },
 
                     // 通用行內欄位更新功能 (支援日期、天數等)
-                    updateField: async (id, field, value, isPrivate = false) => {
+                    updateField: async (id, field, value) => {
                         try {
                             if (field === 'duration' && (!value || value < 1)) value = 1;
                             const updateObj = {};
                             updateObj[field] = value;
-                            await db.update(id, updateObj, isPrivate);
+                            await db.update(id, updateObj);
                             const fieldName = field === 'start' ? '開始日期' : (field === 'duration' ? '天數' : field);
                             utils.toast(`已更新${fieldName}`);
                         } catch(e) {
@@ -1289,9 +1210,7 @@
 
                     // 處理行事曆選項的視窗
                     addToCalendar: (id, type) => {
-                        const isPrivate = type === 'private-gantt';
-                        const dataSource = isPrivate ? this.privateData : this.data;
-                        const item = dataSource.find(i => i.id === id);
+                        const item = this.data.find(i => i.id === id);
                         if (!item) return;
                         
                         let title = '', details = '', start = '', end = '';
@@ -1301,8 +1220,8 @@
                             details = `優先級: ${item.priority}\n人員: ${item.personnel}`;
                             start = item.date;
                             end = start;
-                        } else if (type === 'gantt' || type === 'private-gantt') {
-                            title = `${isPrivate ? '[私人] ' : '[專案排程] '}${item.name}`;
+                        } else if (type === 'gantt') {
+                            title = `[專案排程] ${item.name}`;
                             details = `負責人: ${item.assignee || '未指派'}\n進度: ${item.progress}%\n備註: ${item.note || '無'}`;
                             start = item.start;
                             end = utils.addWorkingDays(item.start, item.duration);
@@ -1370,8 +1289,7 @@
                         payload.suspended = suspendedEl ? suspendedEl.checked : false;
 
                         try {
-                            const isPrivate = this.currentTab === 'private-gantt';
-                            await db.add({ type: isPrivate ? 'private-gantt' : 'gantt', ...payload }, isPrivate);
+                            await db.add({ type: 'gantt', ...payload });
                             window.modal.close();
                             utils.toast('任務已複製', '📋');
                         } catch(e) {
@@ -1383,9 +1301,8 @@
                     save: async (id, type) => {
                         const form = utils.$('#edit-form');
                         const payload = Object.fromEntries(new FormData(form));
-                        const isPrivate = type === 'private-gantt';
                         
-                        if(type === 'gantt' || type === 'private-gantt') {
+                        if(type === 'gantt') {
                             payload.duration = parseInt(payload.duration) || 1;
                             payload.progress = parseInt(payload.progress) || 0;
                             payload.order = parseInt(payload.order) || 0;
@@ -1403,7 +1320,7 @@
                         }
                         
                         try {
-                            id ? await db.update(id, payload, isPrivate) : await db.add({ type, ...payload }, isPrivate);
+                            id ? await db.update(id, payload) : await db.add({ type, ...payload });
                             window.modal.close();
                         } catch(e) {
                             console.error(e);
@@ -1413,94 +1330,23 @@
                 };
             },
 
-            // 驗證私人排程密碼
-            verifyPrivateLogin() {
-                const pwd = utils.$('#private-password-input').value;
-                if (pwd === CONFIG.privatePassword) {
-                    // 密碼正確
-                    this.isPrivateUnlocked = true;
-                    utils.$('#password-modal').classList.add('opacity-0');
-                    setTimeout(() => {
-                        utils.$('#password-modal').classList.add('hidden');
-                        utils.$('#password-modal').classList.remove('flex');
-                        utils.$('#password-error').classList.add('hidden');
-                        utils.$('#private-password-input').value = '';
-                    }, 300);
-                    
-                    // 開始訂閱私人資料
-                    db.sub(data => {
-                        this.privateData = data;
-                        if(this.currentTab === 'private-gantt') this.render();
-                    }, true);
-                    
-                    this.actuallySwitchTab('private-gantt');
-                } else {
-                    // 密碼錯誤
-                    utils.$('#password-error').classList.remove('hidden');
-                    const inputEl = utils.$('#private-password-input');
-                    inputEl.value = '';
-                    inputEl.focus();
-                    // 搖晃動畫
-                    inputEl.classList.add('animate-[shake_0.5s_ease-in-out]');
-                    setTimeout(() => inputEl.classList.remove('animate-[shake_0.5s_ease-in-out]'), 500);
-                }
-            },
-            
-            cancelPrivateLogin() {
-                utils.$('#password-modal').classList.add('opacity-0');
-                setTimeout(() => {
-                    utils.$('#password-modal').classList.add('hidden');
-                    utils.$('#password-modal').classList.remove('flex');
-                    utils.$('#password-error').classList.add('hidden');
-                    utils.$('#private-password-input').value = '';
-                }, 300);
-                // 退回原本的 Tab (如果原本就在 private 則退回 todo)
-                const fallbackTab = (this.currentTab === 'private-gantt' || !this.currentTab) ? 'todo' : this.currentTab;
-                this.actuallySwitchTab(fallbackTab);
-            },
-
             switchTab(tab) {
-                // 如果是切換到私人排程，且尚未解鎖，則彈出密碼輸入框
-                if (tab === 'private-gantt' && !this.isPrivateUnlocked) {
-                    const pm = utils.$('#password-modal');
-                    pm.classList.remove('hidden');
-                    pm.classList.add('flex');
-                    setTimeout(() => {
-                        pm.classList.remove('opacity-0');
-                        utils.$('#private-password-input').focus();
-                    }, 10);
-                    return; // 中斷切換，等待密碼驗證
-                }
-                
-                this.actuallySwitchTab(tab);
-            },
-            
-            actuallySwitchTab(tab) {
                 this.currentTab = tab;
                 document.querySelectorAll('.nav-btn').forEach(b => {
                     b.classList.remove('bg-slate-800', 'text-white', 'shadow-lg');
                     b.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
                 });
                 const activeBtn = utils.$(`button[data-tab="${tab}"]`);
-                if(activeBtn) {
-                    activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-lg');
-                    activeBtn.classList.remove('text-slate-300');
-                    
-                    const isPrivate = tab === 'private-gantt';
-                    const indicatorColor = isPrivate ? 'bg-amber-500' : 'bg-indigo-500';
-                    utils.$('#page-title').innerHTML = `<span class="w-1.5 h-7 ${indicatorColor} rounded-full"></span>${activeBtn.textContent.trim()}`;
-                }
+                activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-lg');
+                activeBtn.classList.remove('text-slate-300');
+                
+                utils.$('#page-title').innerHTML = `<span class="w-1.5 h-7 bg-indigo-500 rounded-full"></span>${activeBtn.textContent.trim()}`;
                 
                 const actions = utils.$('#header-actions');
-                const isPrivate = tab === 'private-gantt';
-                const btnClass = `text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-base font-bold ${isPrivate ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`;
-                
-                if (tab === 'gantt' || tab === 'private-gantt') {
-                    actions.innerHTML = `<button onclick="window.app.openEditModal('${tab}')" class="${btnClass}"><i class="ph-bold ph-plus text-lg"></i> 新增任務</button>`;
-                } else {
-                    actions.innerHTML = `<button onclick="window.app.openEditModal('${tab}')" class="${btnClass}"><i class="ph-bold ph-plus text-lg"></i> 新增項目</button>`;
-                }
-                
+                const btnClass = "bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-base font-bold";
+                actions.innerHTML = tab === 'gantt' 
+                    ? `<button onclick="window.app.openEditModal('gantt')" class="${btnClass}"><i class="ph-bold ph-plus text-lg"></i> 新增任務</button>`
+                    : `<button onclick="window.app.openEditModal('${tab}')" class="${btnClass}"><i class="ph-bold ph-plus text-lg"></i> 新增項目</button>`;
                 this.render();
             },
 
@@ -1517,8 +1363,7 @@
                 document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
                 if(view) view.classList.remove('hidden');
                 
-                const dataSource = this.currentTab === 'private-gantt' ? this.privateData : this.data;
-                const items = dataSource.filter(i => i.type === this.currentTab);
+                const items = this.data.filter(i => i.type === this.currentTab);
                 
                 if (['todo', 'event', 'feedback'].includes(this.currentTab)) {
                     if(view) view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
@@ -1532,16 +1377,11 @@
                     });
                 } else if (this.currentTab === 'gantt') {
                     this.gantt.render(items);
-                } else if (this.currentTab === 'private-gantt') {
-                    this.privateGantt.render(items);
                 }
             },
 
             openEditModal(type, id = null) {
-                const isPrivate = type === 'private-gantt';
-                const dataSource = isPrivate ? this.privateData : this.data;
-                const item = id ? dataSource.find(i => i.id === id) : {};
-                
+                const item = id ? this.data.find(i => i.id === id) : {};
                 let fields = [];
                 if (type === 'todo') fields = [
                     { label: '生產編號', name: 'productionId', val: item.productionId },
@@ -1560,15 +1400,16 @@
                     { label: '問題描述', name: 'problem', type: 'textarea', val: item.problem },
                     { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }
                 ];
-                if (type === 'gantt' || type === 'private-gantt') {
-                    const potentialParents = dataSource.filter(i => {
-                        if (i.type !== type || i.id === id) return false;
+                if (type === 'gantt') {
+                    const potentialParents = this.data.filter(i => {
+                        if (i.type !== 'gantt' || i.id === id) return false;
+                        
                         if (id) {
                             let ancestor = i;
                             let safety = 0;
                             while(ancestor.parentId && safety < 100) {
                                 if(ancestor.parentId === id) return false; 
-                                ancestor = dataSource.find(t => t.id === ancestor.parentId);
+                                ancestor = this.data.find(t => t.id === ancestor.parentId);
                                 if(!ancestor) break;
                                 safety++;
                             }
@@ -1592,14 +1433,12 @@
                 let extraHtml = '';
                 if(type === 'todo' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="completed" ${item.completed?'checked':''} class="w-5 h-5 text-indigo-600 rounded border-slate-300"> <span class="font-bold text-slate-700 text-base">已完成此項目</span></label></div>`;
                 if(type === 'event' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded border-slate-300"> <span class="font-bold text-slate-700 text-base">標記為已結案</span></label></div>`;
-                if((type === 'gantt' || type === 'private-gantt') && id) extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded border-slate-300"> <span class="font-bold text-red-700 flex items-center gap-2 text-base"><i class="ph-fill ph-pause"></i> 暫緩實施 (不顯示於排程)</span></label></div>`;
+                if(type === 'gantt' && id) extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded border-slate-300"> <span class="font-bold text-red-700 flex items-center gap-2 text-base"><i class="ph-fill ph-pause"></i> 暫緩實施 (不顯示於排程)</span></label></div>`;
 
                 const deleteBtn = id ? `<button type="button" onclick="window.app.handlers.del('${id}')" class="px-5 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors mr-auto flex items-center gap-2 border border-transparent text-base"><i class="ph-bold ph-trash text-lg"></i> 刪除</button>` : '';
                 
                 // 複製按鈕
-                const copyBtn = (id && (type === 'gantt' || type === 'private-gantt')) ? `<button type="button" onclick="window.app.handlers.copyGantt()" class="px-5 py-2.5 text-blue-600 font-bold hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 border border-transparent text-base mr-2"><i class="ph-bold ph-copy text-lg"></i> 複製</button>` : '';
-
-                const themeColor = isPrivate ? 'amber' : 'indigo';
+                const copyBtn = (id && type === 'gantt') ? `<button type="button" onclick="window.app.handlers.copyGantt()" class="px-5 py-2.5 text-blue-600 font-bold hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 border border-transparent text-base mr-2"><i class="ph-bold ph-copy text-lg"></i> 複製</button>` : '';
 
                 window.modal.open(
                     id ? `編輯${this.getTypeName(type)}` : `新增${this.getTypeName(type)}`,
@@ -1607,13 +1446,11 @@
                     `${deleteBtn}
                      ${copyBtn}
                      <button onclick="window.modal.close()" class="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors text-base">取消</button>
-                     <button onclick="window.app.handlers.save('${id||''}', '${type}')" class="px-6 py-3 bg-${themeColor}-600 text-white font-bold rounded-lg hover:bg-${themeColor}-700 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-base"><i class="ph-bold ph-floppy-disk text-lg"></i> 儲存</button>`
+                     <button onclick="window.app.handlers.save('${id||''}', '${type}')" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-base"><i class="ph-bold ph-floppy-disk text-lg"></i> 儲存</button>`
                 );
             },
             
-            getTypeName(type) { 
-                return { 'todo': '待辦', 'event': '事件', 'feedback': '反饋', 'gantt': '排程', 'private-gantt': '私人排程' }[type] || '項目'; 
-            },
+            getTypeName(type) { return { 'todo': '待辦', 'event': '事件', 'feedback': '反饋', 'gantt': '排程' }[type] || '項目'; },
 
             async addToGantt(eventId) {
                 const event = this.data.find(i => i.id === eventId);
@@ -1629,15 +1466,6 @@
                 });
                 utils.toast('✅ 已將事件加入排程表');
                 this.switchTab('gantt');
-            }
-        };
-
-        // 加入震動動畫 (密碼錯誤時使用)
-        tailwind.config.theme.extend.keyframes = {
-            shake: {
-                '0%, 100%': { transform: 'translateX(0)' },
-                '25%': { transform: 'translateX(-10px)' },
-                '75%': { transform: 'translateX(10px)' }
             }
         };
 
