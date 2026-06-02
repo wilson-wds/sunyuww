@@ -299,11 +299,33 @@
                     { k: 'actions', l: '操作', type: 'actions', w: '190px' }
                 ],
                 event: [
+                    { 
+                        k: 'closed', 
+                        l: '狀態', 
+                        w: '140px', 
+                        // 套用待修改明細的雙棲互動模式 (螢幕高互動按鈕 / 紙本實體方框)
+                        render: r => r.closed 
+                            ? `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為進行中">
+                                   <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已結案
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>確認結案
+                               </div>` 
+                            : `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為結案">
+                                   <i class="ph-bold ph-square text-lg text-emerald-500 group-hover:scale-110 transition-transform"></i>進行中
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>確認結案
+                               </div>` 
+                    },
                     { k: 'priority', l: '優先', w: '90px', render: r => `<div class="flex justify-center"><span class="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm ${r.priority==='high'?'bg-red-500 ring-2 ring-red-100':r.priority==='low'?'bg-emerald-500 ring-2 ring-emerald-100':'bg-amber-500 ring-2 ring-amber-100'}">${r.priority==='high'?'H':r.priority==='low'?'L':'M'}</span></div>` },
                     { k: 'date', l: '日期', w: '130px' }, 
                     { k: 'matter', l: '事項內容', w: 'auto' }, 
                     { k: 'personnel', l: '相關人員', w: '160px' },
-                    { k: 'closed', l: '狀態', w: '110px', render: r => r.closed ? '<span class="text-slate-400 font-medium text-base flex items-center gap-1"><i class="ph-fill ph-check-square"></i> 已結案</span>' : '<span class="text-emerald-600 font-medium text-base flex items-center gap-1"><i class="ph-fill ph-lightning"></i> 進行中</span>' },
                     { k: 'actions', l: '操作', type: 'actions', w: '220px' } 
                 ],
                 feedback: [
@@ -617,17 +639,6 @@
             }
         };
         window.modal = modal;
-
-        // 監聽列印事件，即時注入當下時間
-        window.addEventListener('beforeprint', () => {
-            const now = new Date();
-            const timeString = now.toLocaleString('zh-TW', { 
-                year: 'numeric', month: '2-digit', day: '2-digit', 
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
-            });
-            const printSpan = document.getElementById('print-time-span');
-            if(printSpan) printSpan.textContent = timeString;
-        });
 
         const renderer = {
             table(items, cols, type) {
@@ -1046,6 +1057,26 @@
                             const updateObj = {}; updateObj[field] = value; await db.update(id, updateObj);
                             utils.toast(`已更新${field === 'start' ? '開始日期' : '天數'}`);
                         } catch(e) { utils.toast('更新失敗，請確認權限', '❌'); }
+                    },
+                    // 新增：處理單點擊核取方塊與狀態的互動
+                    toggleTodoStatus: async (id, isCompleted) => {
+                        try {
+                            await db.update(id, { completed: isCompleted });
+                            utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理');
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
+                    },
+                    // 新增：處理事件追蹤狀態的單點切換
+                    toggleEventStatus: async (id, isClosed) => {
+                        try {
+                            await db.update(id, { closed: isClosed });
+                            utils.toast(isClosed ? '事件已標記為結案' : '事件已恢復為進行中');
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
                     },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
