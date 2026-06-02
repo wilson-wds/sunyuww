@@ -399,7 +399,8 @@
         const AI_KEY = "AIzaSyAMLUQZUjQe451CGFgj-R0zb4ZS34nOAA8";
         const aiService = {
             async call(prompt, isJson = false) {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AI_KEY}`;
+                // 修正：將模型名稱更改為正確的 gemini-1.5-flash-latest
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${AI_KEY}`;
                 const body = { contents: [{ parts: [{ text: prompt }] }] };
                 
                 // 修正：Gemini 官方 API 是使用 responseMimeType (駝峰命名法)
