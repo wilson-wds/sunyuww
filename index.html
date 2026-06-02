@@ -161,8 +161,16 @@
             .no-print { display: none !important; }
             .print-show { display: block !important; }
             
+            /* 針對一般列表頁面的列印優化 */
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; text-align: left !important; }
+            thead { display: table-header-group !important; } /* 讓表格跨頁時重複顯示表頭 */
+            
+            /* 隱藏一般列表頁面中的「操作」欄位（編輯/刪除按鈕不該被印出來） */
+            th:last-child, td:last-child { display: none !important; }
+
             /* 關鍵修正：強制重置所有外層容器的高度與溢出設定，避免內容被截斷或隱藏 */
-            body, main, #app-container, #view-gantt { 
+            body, main, #app-container, .view-section { 
                 height: auto !important; 
                 overflow: visible !important; 
                 display: block !important;
@@ -276,8 +284,15 @@
                     待修改明細
                 </h1>
             </div>
-            <div class="flex gap-3" id="header-actions">
-                <!-- 動態注入按鈕 -->
+            <div class="flex gap-3 items-center">
+                <!-- 獨立出來的列印按鈕，讓每個分頁都能使用 -->
+                <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200 transition-colors shadow-sm font-bold border border-slate-200" title="列印此頁面">
+                    <i class="ph-bold ph-printer text-lg"></i> 列印
+                </button>
+                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                <div id="header-actions">
+                    <!-- 動態注入新增按鈕 -->
+                </div>
             </div>
         </header>
 
@@ -326,7 +341,6 @@
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Config & Utils ---
-        // 強制使用您的設定檔，以連線到您的 Firebase 專案
         const CONFIG = {
             firebase: JSON.parse(`{"apiKey":"AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q","authDomain":"sunyu-check.firebaseapp.com","projectId":"sunyu-check","storageBucket":"sunyu-check.appspot.com","messagingSenderId":"627211744361","appId":"1:627211744361:web:58bce4b5009f0c9d5bdef8"}`),
             appId: "sunyu-check",
@@ -345,7 +359,7 @@
                     { k: 'matter', l: '事項內容', w: 'auto' }, 
                     { k: 'personnel', l: '相關人員', w: '160px' },
                     { k: 'closed', l: '狀態', w: '110px', render: r => r.closed ? '<span class="text-slate-400 font-medium text-base flex items-center gap-1"><i class="ph-fill ph-check-square"></i> 已結案</span>' : '<span class="text-emerald-600 font-medium text-base flex items-center gap-1"><i class="ph-fill ph-lightning"></i> 進行中</span>' },
-                    { k: 'actions', l: '操作', type: 'actions', w: '220px' } // 加寬以容納 Google Calendar 按鈕
+                    { k: 'actions', l: '操作', type: 'actions', w: '220px' }
                 ],
                 feedback: [
                     { k: 'feedbackType', l: '類型', w: '130px', render: r => `<span class="px-3 py-1.5 rounded text-sm bg-slate-100 text-slate-700 font-bold border border-slate-200">${r.feedbackType}</span>` }, 
@@ -395,20 +409,16 @@
                 d.setDate(d.getDate() + days);
                 return d.toISOString().split('T')[0];
             },
-            
-            // 開啟 Google 日曆
             openGoogleCalendar: (title, details, startStr, endStr) => {
                 const start = startStr.replace(/-/g, '');
                 const endD = new Date(endStr);
-                endD.setDate(endD.getDate() + 1); // 針對全天事件，結束日期需加一天
+                endD.setDate(endD.getDate() + 1);
                 const end = endD.toISOString().split('T')[0].replace(/-/g, '');
                 
                 const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}`;
                 window.open(url, '_blank');
                 window.modal.close();
             },
-
-            // 產生並下載 .ics 檔案 (供 Apple/Outlook 使用)
             generateICS: (title, details, startStr, endStr) => {
                 const startDay = startStr.replace(/-/g, '');
                 const endD = new Date(endStr);
@@ -866,7 +876,6 @@
                     filteredTasks = filteredTasks.filter(t => t.assignee === this.filterAssignee);
                 }
 
-                // 在這裡不再過濾掉日期的任務，讓所有任務都先進入處理，以便左側清單完整顯示
                 const displayTasks = this.processTasks(filteredTasks);
                 const today = new Date();
                 const viewStart = new Date(this.viewStart);
@@ -926,12 +935,10 @@
                              if (td.date >= start && td.date <= end) visualDuration++;
                         });
 
-                        // 處理任務開始時間早於當前畫面的情況，但要在畫面上顯示部分進度條
                         if (renderLeft === -1 && end >= timelineDays[0].date) {
                             renderLeft = 0;
                         }
 
-                        // 判斷任務是否完全超出了目前的甘特圖時間範圍
                         const isOutOfView = (end < timelineDays[0].date) || (start > timelineDays[timelineDays.length-1].date);
 
                         const left = renderLeft * this.zoom;
@@ -947,7 +954,6 @@
                         if (t.isSummary) barColor = 'is-parent'; 
 
                         let barHTML = '';
-                        // 移除原本的 return 隱藏機制，改為：只有日期範圍重疊時，才渲染彩色進度條
                         if (!t.suspended && !isOutOfView) {
                             barHTML = `
                                 <div class="gantt-bar ${barColor} group-hover:shadow-md"
@@ -1002,7 +1008,7 @@
                                         <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
                                     </div>
                                     
-                                    <!-- 螢幕顯示：多行行內備註輸入框 -->
+                                    <!-- 行內備註多行輸入框 -->
                                     <textarea
                                            class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20 inline-note-textarea print:hidden" 
                                            placeholder="新增備註" 
@@ -1114,9 +1120,6 @@
                                     </select>
                                     <i class="ph-bold ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                                 </div>
-                                <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-800 text-white px-4 py-2 rounded-md text-sm hover:bg-slate-700 transition-colors shadow font-bold">
-                                    <i class="ph-bold ph-printer text-lg"></i> 列印
-                                </button>
                             </div>
                         </div>
 
@@ -1187,19 +1190,23 @@
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: (id) => this.addToGantt(id),
                     
-                    // 行內直接更新備註功能
                     updateNote: async (id, note) => {
-                        try { await db.update(id, { note: note }); } 
-                        catch(e) { console.error(e); utils.toast('備註更新失敗', '❌'); }
+                        try {
+                            await db.update(id, { note: note });
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('備註更新失敗', '❌');
+                        }
                     },
 
-                    // 通用行內欄位更新功能 (支援日期、天數等)
                     updateField: async (id, field, value) => {
                         try {
                             if (field === 'duration' && (!value || value < 1)) value = 1;
+                            
                             const updateObj = {};
                             updateObj[field] = value;
                             await db.update(id, updateObj);
+                            
                             const fieldName = field === 'start' ? '開始日期' : (field === 'duration' ? '天數' : field);
                             utils.toast(`已更新${fieldName}`);
                         } catch(e) {
@@ -1208,7 +1215,6 @@
                         }
                     },
 
-                    // 處理行事曆選項的視窗
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
                         if (!item) return;
@@ -1227,7 +1233,6 @@
                             end = utils.addWorkingDays(item.start, item.duration);
                         }
                         
-                        // 開啟選擇日曆的 Modal
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
                                 <button id="btn-google-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left shadow-sm">
@@ -1275,7 +1280,6 @@
                         }, 50);
                     },
 
-                    // 複製甘特圖任務
                     copyGantt: async () => {
                         const form = utils.$('#edit-form');
                         const payload = Object.fromEntries(new FormData(form));
@@ -1361,19 +1365,16 @@
                 }
 
                 document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-                if(view) view.classList.remove('hidden');
-                
+                view.classList.remove('hidden');
                 const items = this.data.filter(i => i.type === this.currentTab);
                 
                 if (['todo', 'event', 'feedback'].includes(this.currentTab)) {
-                    if(view) view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
+                    view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
                     
                     // 恢復一般列表分頁捲動位置
                     requestAnimationFrame(() => {
-                        if(view) {
-                            view.scrollTop = scrollTop;
-                            view.scrollLeft = scrollLeft;
-                        }
+                        view.scrollTop = scrollTop;
+                        view.scrollLeft = scrollLeft;
                     });
                 } else if (this.currentTab === 'gantt') {
                     this.gantt.render(items);
@@ -1433,11 +1434,10 @@
                 let extraHtml = '';
                 if(type === 'todo' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="completed" ${item.completed?'checked':''} class="w-5 h-5 text-indigo-600 rounded border-slate-300"> <span class="font-bold text-slate-700 text-base">已完成此項目</span></label></div>`;
                 if(type === 'event' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded border-slate-300"> <span class="font-bold text-slate-700 text-base">標記為已結案</span></label></div>`;
-                if(type === 'gantt' && id) extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded border-slate-300"> <span class="font-bold text-red-700 flex items-center gap-2 text-base"><i class="ph-fill ph-pause"></i> 暫緩實施 (不顯示於排程)</span></label></div>`;
+                if(type === 'gantt') extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded border-slate-300"> <span class="font-bold text-red-700 flex items-center gap-2 text-base"><i class="ph-fill ph-pause"></i> 暫緩實施 (不顯示於排程)</span></label></div>`;
 
                 const deleteBtn = id ? `<button type="button" onclick="window.app.handlers.del('${id}')" class="px-5 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors mr-auto flex items-center gap-2 border border-transparent text-base"><i class="ph-bold ph-trash text-lg"></i> 刪除</button>` : '';
                 
-                // 複製按鈕
                 const copyBtn = (id && type === 'gantt') ? `<button type="button" onclick="window.app.handlers.copyGantt()" class="px-5 py-2.5 text-blue-600 font-bold hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 border border-transparent text-base mr-2"><i class="ph-bold ph-copy text-lg"></i> 複製</button>` : '';
 
                 window.modal.open(
