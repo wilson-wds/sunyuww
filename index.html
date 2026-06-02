@@ -218,6 +218,11 @@
                 box-shadow: none !important;
             }
 
+            /* 新增：列印時隱藏未輸入備註時的 placeholder 文字 */
+            textarea::placeholder, input::placeholder {
+                color: transparent !important;
+            }
+            
             /* 確保 input/textarea 在列印時是完全透明無邊框的狀態 */
             input, textarea.inline-note-textarea {
                 background-color: transparent !important;
@@ -1030,9 +1035,37 @@
                                     <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
                                 </div>
 
-                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-mono">${t.suspended ? '-' : t.start.slice(5)}</div>
-                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-mono">${t.suspended ? '-' : (t.endDate ? t.endDate.slice(5) : '-')}</div>
-                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-medium">${t.suspended ? '-' : t.duration}</div>
+                                <!-- 行內編輯: 開始日期 -->
+                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-mono relative group/cell">
+                                    ${t.suspended ? '-' : (t.isSummary ? t.start.slice(5) : `
+                                        <div class="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors rounded px-1 absolute inset-0 z-10 print:static" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus();" title="點擊修改日期">
+                                            ${t.start.slice(5)}
+                                        </div>
+                                        <input type="date" class="hidden w-full h-full bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-xs rounded z-20 print:hidden text-center" 
+                                               value="${t.start}" 
+                                               onclick="event.stopPropagation();"
+                                               onblur="window.app.handlers.updateField('${t.id}', 'start', this.value)"
+                                               onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">
+                                    `)}
+                                </div>
+                                
+                                <!-- 結束日期 (不可編輯，由系統計算) -->
+                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-400 h-full flex items-center justify-center font-mono">${t.suspended ? '-' : (t.endDate ? t.endDate.slice(5) : '-')}</div>
+                                
+                                <!-- 行內編輯: 天數 -->
+                                <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-medium relative group/cell">
+                                    ${t.suspended ? '-' : (t.isSummary ? t.duration : `
+                                        <div class="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors rounded px-1 absolute inset-0 z-10 print:static" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus(); this.nextElementSibling.select();" title="點擊修改天數">
+                                            ${t.duration}
+                                        </div>
+                                        <input type="number" min="1" class="hidden w-full h-8 bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-sm rounded z-20 print:hidden text-center" 
+                                               value="${t.duration}" 
+                                               onclick="event.stopPropagation();"
+                                               onblur="window.app.handlers.updateField('${t.id}', 'duration', parseInt(this.value) || 1)"
+                                               onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">
+                                    `)}
+                                </div>
+
                                 <div class="px-2 text-sm text-center gantt-cell-border truncate text-slate-600 h-full flex items-center justify-center">
                                     ${t.assignee ? `<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-medium">${t.assignee.slice(0,3)}</span>` : '-'}
                                 </div>
@@ -1177,6 +1210,25 @@
                         } catch(e) {
                             console.error(e);
                             utils.toast('備註更新失敗', '❌');
+                        }
+                    },
+
+                    // 新增：通用行內欄位更新功能 (支援日期、天數等)
+                    updateField: async (id, field, value) => {
+                        try {
+                            // 防呆機制：如果是天數，確保至少是 1 天
+                            if (field === 'duration' && (!value || value < 1)) value = 1;
+                            
+                            const updateObj = {};
+                            updateObj[field] = value;
+                            await db.update(id, updateObj);
+                            
+                            // 更新成功後顯示 Toast 提示
+                            const fieldName = field === 'start' ? '開始日期' : (field === 'duration' ? '天數' : field);
+                            utils.toast(`已更新${fieldName}`);
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('更新失敗，請確認權限', '❌');
                         }
                     },
 
