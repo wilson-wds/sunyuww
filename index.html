@@ -178,6 +178,9 @@
                 width: auto !important;
             }
             
+            /* 確保只有當前顯示的 view-section 才會被印出來 */
+            .view-section.hidden { display: none !important; }
+            
             /* 針對 JS 動態生成的內部容器進行重置 */
             #view-gantt > div {
                 height: auto !important;
@@ -285,8 +288,8 @@
                 </h1>
             </div>
             <div class="flex gap-3 items-center">
-                <!-- 獨立出來的列印按鈕，讓每個分頁都能使用 -->
-                <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200 transition-colors shadow-sm font-bold border border-slate-200" title="列印此頁面">
+                <!-- 全域列印按鈕，每個頁面都能用 -->
+                <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200 transition-colors shadow-sm font-bold border border-slate-200" title="列印當前頁面">
                     <i class="ph-bold ph-printer text-lg"></i> 列印
                 </button>
                 <div class="h-6 w-px bg-slate-200 mx-1"></div>
@@ -1120,6 +1123,7 @@
                                     </select>
                                     <i class="ph-bold ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                                 </div>
+                                <!-- 移除了甘特圖專屬的列印按鈕，改用頂部的全域按鈕 -->
                             </div>
                         </div>
 
