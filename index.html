@@ -108,8 +108,14 @@
         @media print {
             .no-print { display: none !important; }
             .print-show { display: block !important; }
+            
+            /* 強制列印時所有表格框線加深 */
             table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; text-align: left !important; }
+            th, td { 
+                border: 1px solid #64748b !important; /* 使用深灰色 Slate-500 替代原本的 Slate-300 */
+                padding: 8px !important; 
+                text-align: left !important; 
+            }
             thead { display: table-header-group !important; }
             th:last-child, td:last-child { display: none !important; }
 
@@ -121,8 +127,10 @@
 
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
             .gantt-row.is-parent-row { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            /* 甘特圖內的線條也同步加深 */
             .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #64748b !important; }
-            .gantt-timeline-cell { border-right-color: #94a3b8 !important; }
+            .gantt-timeline-cell { border-right-color: #64748b !important; }
             .gantt-row { border-bottom: 1px solid #64748b !important; }
             
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
@@ -144,7 +152,7 @@
                 background: white; 
                 z-index: 1000; 
                 padding: 10px 24px 15px 24px; 
-                border-top: 2px solid #cbd5e1; 
+                border-top: 2px solid #64748b; /* 頁尾頂部線條也加深 */
             }
             .signature-line {
                 display: inline-block;
@@ -1038,16 +1046,6 @@
                             const updateObj = {}; updateObj[field] = value; await db.update(id, updateObj);
                             utils.toast(`已更新${field === 'start' ? '開始日期' : '天數'}`);
                         } catch(e) { utils.toast('更新失敗，請確認權限', '❌'); }
-                    },
-                    // 新增：處理單點擊核取方塊與狀態的互動
-                    toggleTodoStatus: async (id, isCompleted) => {
-                        try {
-                            await db.update(id, { completed: isCompleted });
-                            utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理');
-                        } catch(e) {
-                            console.error(e);
-                            utils.toast('狀態更新失敗', '❌');
-                        }
                     },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
