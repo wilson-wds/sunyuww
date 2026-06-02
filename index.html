@@ -845,6 +845,15 @@
 
             render(allTasks) {
                 const container = utils.$('#view-gantt');
+                
+                // 紀錄甘特圖捲動位置
+                const ganttScrollContainer = container.querySelector('.gantt-container');
+                let scrollTop = 0, scrollLeft = 0;
+                if (ganttScrollContainer) {
+                    scrollTop = ganttScrollContainer.scrollTop;
+                    scrollLeft = ganttScrollContainer.scrollLeft;
+                }
+
                 const assignees = [...new Set(allTasks.map(t => t.assignee).filter(Boolean))].sort();
                 
                 let filteredTasks = [...allTasks];
@@ -1117,6 +1126,15 @@
                     </div>
                 `;
                 
+                // 恢復甘特圖捲動位置
+                requestAnimationFrame(() => {
+                    const newGanttScrollContainer = container.querySelector('.gantt-container');
+                    if (newGanttScrollContainer) {
+                        newGanttScrollContainer.scrollTop = scrollTop;
+                        newGanttScrollContainer.scrollLeft = scrollLeft;
+                    }
+                });
+
                 setTimeout(() => {
                     const picker = utils.$('#gantt-date-picker');
                     if(picker && !picker.value) {
@@ -1307,13 +1325,27 @@
             },
 
             render() {
-                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
                 const view = utils.$(`#view-${this.currentTab}`);
+                
+                // 紀錄當前分頁的捲動位置
+                let scrollTop = 0, scrollLeft = 0;
+                if (view && !view.classList.contains('hidden')) {
+                    scrollTop = view.scrollTop;
+                    scrollLeft = view.scrollLeft;
+                }
+
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
                 view.classList.remove('hidden');
                 const items = this.data.filter(i => i.type === this.currentTab);
                 
                 if (['todo', 'event', 'feedback'].includes(this.currentTab)) {
                     view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
+                    
+                    // 恢復一般列表分頁捲動位置
+                    requestAnimationFrame(() => {
+                        view.scrollTop = scrollTop;
+                        view.scrollLeft = scrollLeft;
+                    });
                 } else if (this.currentTab === 'gantt') {
                     this.gantt.render(items);
                 }
