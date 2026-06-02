@@ -128,6 +128,10 @@
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
             textarea::placeholder, input::placeholder { color: transparent !important; }
             input, textarea.inline-note-textarea { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+            
+            /* 列印專用頁尾設定：固定在頁面底部 */
+            body { padding-bottom: 25px !important; }
+            #print-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; text-align: right; font-size: 12px; color: #64748b; background: white; z-index: 1000; padding: 4px 24px; border-top: 1px solid #e2e8f0; }
         }
     </style>
 </head>
@@ -214,6 +218,11 @@
     <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-6 py-4 rounded-lg shadow-lg transform translate-y-32 transition-transform duration-300 z-[100] flex items-center gap-3 border border-slate-700">
         <span id="toast-icon" class="text-2xl">✅</span>
         <span id="toast-msg" class="font-medium text-base">Notification</span>
+    </div>
+
+    <!-- 列印專屬頁尾 (螢幕隱藏，列印時顯示) -->
+    <div id="print-footer" class="hidden">
+        表單列印時間：<span id="print-time-span"></span>
     </div>
 
     <script type="module">
@@ -578,6 +587,17 @@
             }
         };
         window.modal = modal;
+
+        // 監聽列印事件，即時注入當下時間
+        window.addEventListener('beforeprint', () => {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-TW', { 
+                year: 'numeric', month: '2-digit', day: '2-digit', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+            });
+            const printSpan = document.getElementById('print-time-span');
+            if(printSpan) printSpan.textContent = timeString;
+        });
 
         const renderer = {
             table(items, cols, type) {
