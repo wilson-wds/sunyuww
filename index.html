@@ -129,9 +129,29 @@
             textarea::placeholder, input::placeholder { color: transparent !important; }
             input, textarea.inline-note-textarea { background-color: transparent !important; border: none !important; box-shadow: none !important; }
             
-            /* 列印專用頁尾設定：固定在頁面底部 */
-            body { padding-bottom: 25px !important; }
-            #print-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; text-align: right; font-size: 12px; color: #64748b; background: white; z-index: 1000; padding: 4px 24px; border-top: 1px solid #e2e8f0; }
+            /* 列印專用頁尾設定：固定在頁面底部，並增加上邊距避免蓋住內容 */
+            body { padding-bottom: 60px !important; }
+            #print-footer { 
+                display: flex !important; 
+                justify-content: space-between; 
+                align-items: flex-end; 
+                position: fixed; 
+                bottom: 0; 
+                left: 0; 
+                right: 0; 
+                font-size: 14px; 
+                color: #334155; 
+                background: white; 
+                z-index: 1000; 
+                padding: 10px 24px 15px 24px; 
+                border-top: 2px solid #cbd5e1; 
+            }
+            .signature-line {
+                display: inline-block;
+                width: 150px;
+                border-bottom: 1px solid #334155;
+                margin-left: 8px;
+            }
         }
     </style>
 </head>
@@ -222,7 +242,8 @@
 
     <!-- 列印專屬頁尾 (螢幕隱藏，列印時顯示) -->
     <div id="print-footer" class="hidden">
-        表單列印時間：<span id="print-time-span"></span>
+        <div class="font-bold">執行人員簽收：<span class="signature-line"></span></div>
+        <div>表單列印時間：<span id="print-time-span"></span></div>
     </div>
 
     <script type="module">
@@ -266,7 +287,7 @@
                     { k: 'modTypes', l: '修改類型', w: '160px', render: r => (r.modTypes || []).length > 0 ? (r.modTypes).map(t => `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-bold mr-1 mb-1 border border-indigo-100">${t}</span>`).join('') : '<span class="text-slate-300">-</span>' },
                     { k: 'content', l: '修改內容', w: 'auto' },
                     { k: 'date', l: '日期', w: '110px' },
-                    { k: 'personnel', l: '執行人員', w: '110px' },
+                    // 已移除執行人員欄位，改用頁尾簽名代替
                     { k: 'actions', l: '操作', type: 'actions', w: '190px' }
                 ],
                 event: [
@@ -1032,7 +1053,7 @@
                         const item = this.data.find(i => i.id === id);
                         if (!item) return;
                         let title = '', details = '', start = '', end = '';
-                        if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n執行人員: ${item.personnel || '-'}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
+                        if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
                         else if (type === 'event') { title = `[工廠] ${item.matter}`; details = `人員: ${item.personnel}`; start = item.date; end = start; }
                         else if (type === 'gantt') { title = `[排程] ${item.name}`; details = `負責人: ${item.assignee||'-'}\n進度: ${item.progress}%`; start = item.start; end = utils.addWorkingDays(item.start, item.duration); }
                         const html = `
@@ -1123,8 +1144,7 @@
                     { label: '料號', name: 'partNumber', val: item.partNumber }, 
                     { label: '修改類型', name: 'modTypes', type: 'checkboxes', opts: ['改版', '換圖', 'BOM修改', '其他'], val: item.modTypes || [] }, // 新增修改類型勾選
                     { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, 
-                    { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() },
-                    { label: '執行人員', name: 'personnel', val: item.personnel, placeholder: '輸入執行人員姓名' } // 新增執行人員欄位
+                    { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }
                 ];
                 if (type === 'event') fields = [{ label: '事件日期', name: 'date', type: 'date', val: item.date || utils.date() }, { label: '事項內容', name: 'matter', val: item.matter }, { label: '相關人員', name: 'personnel', val: item.personnel }, { label: '優先程度', name: 'priority', type: 'select', opts: [{v:'high',l:'🔴 緊急'},{v:'medium',l:'🟠 一般'},{v:'low',l:'🟢 低'}], val: item.priority || 'medium' }];
                 if (type === 'feedback') fields = [{ label: '反饋類型', name: 'feedbackType', type: 'select', opts: ['硬體','軟體','流程','其他'], val: item.feedbackType }, { label: '問題描述', name: 'problem', type: 'textarea', val: item.problem }, { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }];
