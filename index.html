@@ -982,26 +982,6 @@
                         let leftOffsetDays = 0;
                         let durationDays = 0;
 
-                        const dLoop = new Date(viewStart);
-                        let foundStart = false;
-                        let startIndex = -1;
-                        let endIndex = -1;
-
-                        for(let i=0; i<timelineDays.length; i++) {
-                            const currentDayStr = timelineDays[i].date.toDateString();
-                            if(currentDayStr === start.toDateString()) startIndex = i;
-                            if(currentDayStr === end.toDateString()) endIndex = i;
-                            
-                            if (start < timelineDays[i].date && startIndex === -1) startIndex = i; 
-                        }
-
-                        if (startIndex === -1 && end < timelineDays[0].date) return; 
-                        if (start > timelineDays[timelineDays.length-1].date) return; 
-
-                        const effectiveStartIdx = startIndex === -1 ? 0 : startIndex;
-                        
-                        let widthInUnits = 0;
-                        
                         let visualDuration = 0;
                         let renderLeft = -1;
                         
@@ -1010,11 +990,12 @@
                              if (td.date >= start && td.date <= end) visualDuration++;
                         });
 
-                        if (renderLeft === -1) {
-                            if (end >= timelineDays[0].date) {
-                                renderLeft = 0;
-                            } else return; 
+                        if (renderLeft === -1 && end >= timelineDays[0].date) {
+                            renderLeft = 0;
                         }
+
+                        // 判斷任務是否完全超出了目前的甘特圖時間範圍
+                        const isOutOfView = (end < timelineDays[0].date) || (start > timelineDays[timelineDays.length-1].date);
 
                         const left = renderLeft * this.zoom;
                         const width = Math.max(1, visualDuration) * this.zoom;
@@ -1029,7 +1010,8 @@
                         if (t.isSummary) barColor = 'is-parent'; 
 
                         let barHTML = '';
-                        if (!t.suspended && width > 0) {
+                        // 移除原本的 return 隱藏機制，改為：只有日期範圍重疊時，才渲染彩色進度條
+                        if (!t.suspended && !isOutOfView) {
                             barHTML = `
                                 <div class="gantt-bar ${barColor} group-hover:shadow-md"
                                      style="left:${left}px; width:${width - 6}px;"
