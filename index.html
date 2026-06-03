@@ -282,7 +282,6 @@
                     { k: 'modTypes', l: '修改類型', w: '160px', render: r => (r.modTypes || []).length > 0 ? (r.modTypes).map(t => `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-bold mr-1 mb-1 border border-indigo-100">${t}</span>`).join('') : '<span class="text-slate-300">-</span>' },
                     { k: 'content', l: '修改內容', w: 'auto' },
                     { k: 'date', l: '日期', w: '110px' },
-                    // 移除人員欄位，改用頁尾簽名
                     { k: 'actions', l: '操作', type: 'actions', w: '190px' }
                 ],
                 event: [
@@ -291,26 +290,30 @@
                         l: '狀態', 
                         w: '140px', 
                         render: r => r.closed 
+                            // 已完成：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
                             ? `<div class="print:hidden">
-                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為進行中">
-                                   <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已結案
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為待處理">
+                                   <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已完成
                                  </button>
                                </div>
                                <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
-                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>確認結案
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>完成請打勾
                                </div>` 
+                            // 待處理：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
                             : `<div class="print:hidden">
-                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為結案">
-                                   <i class="ph-bold ph-square text-lg text-emerald-500 group-hover:scale-110 transition-transform"></i>進行中
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為完成">
+                                   <i class="ph-bold ph-square text-lg text-blue-500 group-hover:scale-110 transition-transform"></i>待處理
                                  </button>
                                </div>
                                <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
-                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>確認結案
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>完成請打勾
                                </div>` 
                     },
-                    { k: 'date', l: '日期', w: '130px' }, 
+                    { k: 'date', l: '日期', w: '110px' }, 
                     { k: 'matter', l: '事項內容', w: 'auto' }, 
-                    { k: 'personnel', l: '相關人員', w: '160px' },
+                    { k: 'personnel', l: '相關人員', w: '130px' },
+                    { k: 'expectedDate', l: '預計完成', w: '110px' }, // 新增預計完成欄位
+                    { k: 'note', l: '備註', w: '160px', render: r => `<div class="whitespace-pre-wrap break-words text-sm text-slate-500">${r.note || ''}</div>` }, // 新增備註欄位
                     { k: 'actions', l: '操作', type: 'actions', w: '220px' } 
                 ],
                 feedback: [
@@ -411,8 +414,9 @@
                                 await signInAnonymously(this.auth);
                             }
                         } catch (e) {
-                            console.error('Auth error:', e);
-                            resolve(null); // Resolve to unblock UI if auth completely fails
+                            console.error('Auth error, fallback:', e);
+                            // 即使失敗也執行 resolve 以避免無限轉圈
+                            resolve(null);
                         }
                     };
                     initAuth();
@@ -426,10 +430,10 @@
                         }
                     });
 
-                    // Failsafe timeout to prevent infinite spinner
+                    // 加入防呆機制：如果 5 秒後 Auth 還沒回應，強制解除載入畫面
                     setTimeout(() => {
                         resolve(this.user || null);
-                    }, 6000);
+                    }, 5000);
                 });
             }
             sub(cb) {
@@ -904,7 +908,7 @@
                     toGantt: async (eventId) => {
                         const event = this.data.find(i => i.id === eventId);
                         const duration = event.priority === 'high' ? 3 : (event.priority === 'medium' ? 5 : 7);
-                        await db.add({ type: 'gantt', name: `[${event.priority==='high'?'急':'一般'}] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
+                        await db.add({ type: 'gantt', name: `[事件] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
                         this.switchTab('gantt');
                     },
                     updateNote: async (id, note) => { try { await db.update(id, { note }); } catch(e) { utils.toast('備註更新失敗', '❌'); } },
@@ -919,26 +923,21 @@
                         try {
                             await db.update(id, { completed: isCompleted });
                             utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理');
-                        } catch(e) {
-                            console.error(e);
-                            utils.toast('狀態更新失敗', '❌');
-                        }
+                        } catch(e) { console.error(e); utils.toast('狀態更新失敗', '❌'); }
                     },
+                    // 新增：事件追蹤狀態切換
                     toggleEventStatus: async (id, isClosed) => {
                         try {
                             await db.update(id, { closed: isClosed });
-                            utils.toast(isClosed ? '事件已標記為結案' : '事件已恢復為進行中');
-                        } catch(e) {
-                            console.error(e);
-                            utils.toast('狀態更新失敗', '❌');
-                        }
+                            utils.toast(isClosed ? '事件已完成' : '事件已恢復為待處理');
+                        } catch(e) { console.error(e); utils.toast('狀態更新失敗', '❌'); }
                     },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
                         if (!item) return;
                         let title = '', details = '', start = '', end = '';
                         if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
-                        else if (type === 'event') { title = `[工廠] ${item.matter}`; details = `人員: ${item.personnel}`; start = item.date; end = start; }
+                        else if (type === 'event') { title = `[工廠事件] ${item.matter}`; details = `人員: ${item.personnel}\n預計完成: ${item.expectedDate || '-'}\n備註: ${item.note || ''}`; start = item.date; end = item.expectedDate || start; }
                         else if (type === 'gantt') { title = `[排程] ${item.name}`; details = `負責人: ${item.assignee||'-'}\n進度: ${item.progress}%`; start = item.start; end = utils.addWorkingDays(item.start, item.duration); }
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
@@ -970,7 +969,7 @@
                         const payload = Object.fromEntries(formData);
 
                         if(type === 'todo') {
-                            payload.modTypes = formData.getAll('modTypes');
+                            payload.modTypes = formData.getAll('modTypes'); 
                             payload.completed = form.querySelector('[name=completed]')?.checked || false; 
                         } else if(type === 'gantt') { 
                             payload.duration = parseInt(payload.duration)||1; 
@@ -1029,7 +1028,14 @@
                     { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, 
                     { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }
                 ];
-                if (type === 'event') fields = [{ label: '事件日期', name: 'date', type: 'date', val: item.date || utils.date() }, { label: '事項內容', name: 'matter', val: item.matter }, { label: '相關人員', name: 'personnel', val: item.personnel }];
+                // 更新事件追蹤表單：移除優先程度，新增預計完成與備註
+                if (type === 'event') fields = [
+                    { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }, 
+                    { label: '事項內容', name: 'matter', val: item.matter }, 
+                    { label: '相關人員', name: 'personnel', val: item.personnel },
+                    { label: '預計完成日期', name: 'expectedDate', type: 'date', val: item.expectedDate || '' },
+                    { label: '備註', name: 'note', type: 'textarea', val: item.note }
+                ];
                 if (type === 'feedback') fields = [{ label: '反饋類型', name: 'feedbackType', type: 'select', opts: ['硬體','軟體','流程','其他'], val: item.feedbackType }, { label: '問題描述', name: 'problem', type: 'textarea', val: item.problem }, { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }];
                 if (type === 'gantt') {
                     const potentialParents = this.data.filter(i => { if (i.type !== 'gantt' || i.id === id) return false; if (id) { let a = i, s = 0; while(a.parentId && s < 100) { if(a.parentId === id) return false; a = this.data.find(t => t.id === a.parentId); if(!a) break; s++; } } return true; });
@@ -1038,7 +1044,7 @@
                 }
                 let extraHtml = '';
                 if(type === 'todo' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="completed" ${item.completed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-slate-700">已完成</span></label></div>`;
-                if(type === 'event' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-slate-700">已結案</span></label></div>`;
+                if(type === 'event' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-slate-700">已完成</span></label></div>`;
                 if(type === 'gantt') extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded"> <span class="font-bold text-red-700">暫緩實施 (不顯示於排程)</span></label></div>`;
 
                 const copyBtn = (id && type === 'gantt') ? `<button type="button" onclick="window.app.handlers.copyGantt()" class="px-5 py-2.5 text-blue-600 font-bold hover:bg-blue-50 rounded-lg mr-2"><i class="ph-bold ph-copy text-lg"></i> 複製</button>` : '';
