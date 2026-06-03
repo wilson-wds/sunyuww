@@ -472,148 +472,6 @@
         const db = new FirestoreService();
         window.db = db;
 
-        // 預留為空，Canvas 預覽環境會自動注入系統金鑰。若您要下載到自己的電腦執行，請在此填入 'AIzaSy...' 開頭的標準金鑰
-        const AI_KEY = ""; 
-        const aiService = {
-            async call(prompt, isJson = false) {
-                // 依據預覽環境規範，使用專屬支援的模型
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${AI_KEY}`;
-                const body = { contents: [{ parts: [{ text: prompt }] }] };
-                
-                if (isJson) {
-                    body.generationConfig = { responseMimeType: "application/json" };
-                }
-                
-                const delays = [1000, 2000, 4000, 8000, 16000];
-                let lastError = "未知的錯誤";
-
-                for (let attempt = 0; attempt <= 5; attempt++) {
-                    try {
-                        const res = await fetch(url, { 
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify(body) 
-                        });
-                        
-                        const data = await res.json();
-                        
-                        if (res.ok && data.candidates) {
-                            return data.candidates[0].content.parts[0].text;
-                        } else {
-                            lastError = data.error?.message || "API 回傳錯誤";
-                            if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-                                return { error: true, message: lastError };
-                            }
-                        }
-                    } catch(e) {
-                        lastError = "網路連線異常，或受到跨來源 (CORS) 阻擋";
-                    }
-                    
-                    if (attempt < 5) {
-                        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-                    }
-                }
-                
-                return { 
-                    error: true, 
-                    message: `API 呼叫失敗，錯誤原因：${lastError}。請確認是否在正確的環境執行。` 
-                };
-            },
-            openMenu() {
-                const html = `
-                    <div class="flex flex-col gap-4 py-2">
-                        <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-2">
-                            <h4 class="font-bold text-indigo-800 text-lg mb-1 flex items-center gap-2"><i class="ph-fill ph-sparkle text-amber-500"></i> Gemini 智能助理</h4>
-                            <p class="text-sm text-indigo-600">讓 AI 協助您分析當前排程進度，或是自動幫您規劃新專案。</p>
-                        </div>
-                        <button onclick="window.ai.analyzeSchedule()" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-amber-50 hover:border-amber-300 transition-all text-left shadow-sm group">
-                            <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                                <i class="ph-bold ph-stethoscope text-xl"></i>
-                            </div>
-                            <div>
-                                <div class="font-bold text-slate-800 text-lg">排程健康檢查</div>
-                                <div class="text-sm text-slate-500">分析目前所有任務，找出潛在延遲風險與建議</div>
-                            </div>
-                        </button>
-                        <div class="w-full flex flex-col gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                            <div class="flex items-center gap-4 text-left">
-                                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-                                    <i class="ph-bold ph-magic-wand text-xl"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-bold text-slate-800 text-lg">智能專案拆解</div>
-                                    <div class="text-sm text-slate-500 mb-2">輸入專案目標，AI 自動為您建立排程與子任務</div>
-                                    <div class="flex gap-2">
-                                        <input type="text" id="ai-project-input" placeholder="例如：包裝機升級工程" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                                        <button onclick="window.ai.generateTasks()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap">生成</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                window.modal.open('✨ AI 智能助理', html, `<button onclick="window.modal.close()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">關閉</button>`);
-            },
-            async analyzeSchedule() {
-                const tasks = window.app.data.filter(t => t.type === 'gantt' && !t.suspended);
-                if(tasks.length === 0) { utils.toast('目前沒有排程可供分析', '⚠️'); return; }
-                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-fill ph-sparkle text-5xl text-amber-400 animate-pulse mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在分析排程資料...</h3><p class="text-slate-500 text-sm mt-2">請稍候片刻</p></div>`;
-                utils.$('#modal-footer').innerHTML = '';
-                const today = new Date().toISOString().split('T')[0];
-                const taskStr = tasks.map(t => `- [${t.name}] 負責人:${t.assignee||'未指派'}, 進度:${t.progress}%, 結束:${t.endDate||'未知'}`).join('\n');
-                const prompt = `你是一位經驗豐富的工廠排程管理專家。今天是 ${today}。以下是目前的專案排程狀態：\n${taskStr}\n請進行排程健康檢查：1.指出哪些任務已落後或即將落後。2.人力分配是否有過度集中風險。3.給予工廠主管2到3個具體的行動建議。\n請以繁體中文回答，使用乾淨的 HTML 語法輸出。請利用 Tailwind CSS class (例如 class="text-xl font-bold text-red-600 mb-2", class="list-disc pl-5 space-y-2") 讓排版美觀專業。不要包含 markdown 標記。`;
-                
-                const result = await this.call(prompt);
-                
-                if (typeof result === 'string') {
-                    utils.$('#modal-body').innerHTML = `<div class="text-slate-700 leading-relaxed">${result.replace(/```html|```/g, '')}</div>`;
-                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">回上一步</button><button onclick="window.modal.close()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors">完成</button>`;
-                } else if (result && result.error) {
-                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
-                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
-                } else {
-                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 font-bold text-center py-10">分析失敗，未知的錯誤發生。</div>`;
-                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
-                }
-            },
-            async generateTasks() {
-                const input = utils.$('#ai-project-input');
-                const projectName = input ? input.value.trim() : '';
-                if(!projectName) { utils.toast('請輸入專案名稱', '⚠️'); return; }
-                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-bold ph-magic-wand text-5xl text-blue-500 animate-bounce mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在規劃「${projectName}」...</h3><p class="text-slate-500 text-sm mt-2">自動拆解子任務與估算工期中</p></div>`;
-                utils.$('#modal-footer').innerHTML = '';
-                const prompt = `你是一個專業的工廠生產排程專家。我現在要啟動一個新專案：「${projectName}」。請幫我把這個專案拆解成 3 到 5 個連續執行的子任務。回傳格式必須是嚴格的 JSON Array，不要包含任何 markdown 標記或其他文字。每個 JSON 物件要有以下欄位："name": 任務名稱(字串), "duration": 預估工作天數(整數), "assignee": 建議指派對象(例如：廠務、工程師 等字串)`;
-                
-                const result = await this.call(prompt, true);
-                
-                if (typeof result === 'string') {
-                    try {
-                        const tasks = JSON.parse(result.replace(/```json|```/g, '').trim());
-                        if(tasks && tasks.length > 0) {
-                            const parentId = await window.db.add({ type: 'gantt', name: projectName, parentId: null, assignee: '', start: utils.date(), duration: 1, progress: 0, order: 99 }, true);
-                            let currentStart = utils.date();
-                            for(let i=0; i<tasks.length; i++) {
-                                await window.db.add({ type: 'gantt', name: tasks[i].name, parentId: parentId, assignee: tasks[i].assignee, start: currentStart, duration: tasks[i].duration, progress: 0, order: i }, true);
-                                currentStart = utils.addWorkingDays(currentStart, tasks[i].duration);
-                            }
-                            utils.toast('✅ 專案智能拆解並建立完成！');
-                            window.modal.close();
-                            window.app.switchTab('gantt');
-                        }
-                    } catch(e) {
-                        utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>生成失敗，AI 回傳格式異常。</b><br><span class="text-xs text-slate-400 mt-2 block break-all text-left max-h-32 overflow-y-auto">${result}</span></div>`;
-                        utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
-                    }
-                } else if (result && result.error) {
-                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
-                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
-                } else {
-                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10">生成失敗，未知的錯誤發生。</div>`;
-                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
-                }
-            }
-        };
-        window.ai = aiService;
-
         const modal = {
             el: utils.$('#uni-modal'),
             open(title, bodyHtml, footerHtml = '') {
@@ -998,9 +856,6 @@
                                     </select>
                                     <i class="ph-bold ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                                 </div>
-                                <button onclick="window.ai.openMenu()" class="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-md text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow font-bold">
-                                    <i class="ph-fill ph-sparkle text-lg animate-pulse"></i> AI 助理
-                                </button>
                             </div>
                         </div>
                         <div class="gantt-container bg-white custom-scrollbar">
@@ -1035,29 +890,13 @@
         const app = {
             data: [], currentTab: 'todo', gantt: new GanttManager(),
             init() {
-                // 安全的 Firebase 載入與超時處理
-                const loadFallback = setTimeout(() => {
-                    const loader = utils.$('#loading');
-                    if(loader && !loader.classList.contains('hidden')) {
-                        loader.classList.add('hidden');
-                        utils.toast('連線超時，請檢查網路或重整頁面', '⚠️');
-                    }
-                }, 5000);
-
                 db.init().then(() => {
-                    clearTimeout(loadFallback);
-                    if (db.user) {
-                        db.sub(data => {
-                            this.data = data;
-                            utils.$('#loading').classList.add('opacity-0'); 
-                            setTimeout(() => utils.$('#loading').classList.add('hidden'), 500);
-                            this.render();
-                        });
-                    } else {
-                        utils.$('#loading').classList.add('hidden');
-                    }
+                    db.sub(data => {
+                        this.data = data;
+                        utils.$('#loading').classList.add('opacity-0'); setTimeout(() => utils.$('#loading').classList.add('hidden'), 500);
+                        this.render();
+                    });
                 });
-                
                 window.app = this;
                 this.handlers = {
                     del: async (id) => { if(await db.del(id)) window.modal.close(); },
@@ -1065,7 +904,7 @@
                     toGantt: async (eventId) => {
                         const event = this.data.find(i => i.id === eventId);
                         const duration = event.priority === 'high' ? 3 : (event.priority === 'medium' ? 5 : 7);
-                        await db.add({ type: 'gantt', name: `[一般] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
+                        await db.add({ type: 'gantt', name: `[${event.priority==='high'?'急':'一般'}] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
                         this.switchTab('gantt');
                     },
                     updateNote: async (id, note) => { try { await db.update(id, { note }); } catch(e) { utils.toast('備註更新失敗', '❌'); } },
@@ -1077,21 +916,30 @@
                         } catch(e) { utils.toast('更新失敗，請確認權限', '❌'); }
                     },
                     toggleTodoStatus: async (id, isCompleted) => {
-                        try { await db.update(id, { completed: isCompleted }); utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理'); } 
-                        catch(e) { utils.toast('狀態更新失敗', '❌'); }
+                        try {
+                            await db.update(id, { completed: isCompleted });
+                            utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理');
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
                     },
                     toggleEventStatus: async (id, isClosed) => {
-                        try { await db.update(id, { closed: isClosed }); utils.toast(isClosed ? '事件已標記為結案' : '事件已恢復為進行中'); } 
-                        catch(e) { utils.toast('狀態更新失敗', '❌'); }
+                        try {
+                            await db.update(id, { closed: isClosed });
+                            utils.toast(isClosed ? '事件已標記為結案' : '事件已恢復為進行中');
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
                     },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
                         if (!item) return;
                         let title = '', details = '', start = '', end = '';
                         if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
-                        else if (type === 'event') { title = `[事件] ${item.matter}`; details = `人員: ${item.personnel}`; start = item.date; end = start; }
+                        else if (type === 'event') { title = `[工廠] ${item.matter}`; details = `人員: ${item.personnel}`; start = item.date; end = start; }
                         else if (type === 'gantt') { title = `[排程] ${item.name}`; details = `負責人: ${item.assignee||'-'}\n進度: ${item.progress}%`; start = item.start; end = utils.addWorkingDays(item.start, item.duration); }
-                        
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
                                 <button id="btn-google-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 transition-all text-left shadow-sm">
