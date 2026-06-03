@@ -39,7 +39,7 @@
         }
 
         .sticky-left { position: sticky; left: 0; z-index: 20; background: white; border-right: 1px solid #cbd5e1; box-shadow: 2px 0 5px rgba(0,0,0,0.02); }
-        .sticky-header { position: sticky top: 0; z-index: 30; background: #cbd5e1; border-bottom: 1px solid #94a3b8; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .sticky-header { position: sticky; top: 0; z-index: 30; background: #cbd5e1; border-bottom: 1px solid #94a3b8; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .sticky-corner { position: sticky; left: 0; top: 0; z-index: 40; background: #cbd5e1; border-right: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; }
 
         .gantt-row { border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease; min-height: 48px; height: 100%; }
@@ -51,7 +51,7 @@
             position: absolute; height: 28px; top: 10px; border-radius: 6px;
             cursor: grab; transition: transform 0.1s, box-shadow 0.2s; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 13px;
-            display: flex; items-center; padding-left: 10px; color: white; 
+            display: flex; align-items: center; padding-left: 10px; color: white; 
             overflow: visible; z-index: 10; white-space: nowrap; font-weight: 500;
         }
         .gantt-bar:hover { z-index: 25; box-shadow: 0 4px 12px rgba(0,0,0,0.15); filter: brightness(105%); }
@@ -97,7 +97,7 @@
         .col-resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize; z-index: 50; opacity: 0; transition: all 0.2s; }
         .header-cell-resizable:hover .col-resizer, .col-resizer:hover, .col-resizer.resizing { opacity: 1; background: #3b82f6; }
         
-        .collapse-arrow { cursor: pointer; width: 24px; height: 24px; display: flex; items-center; justify-center; border-radius: 4px; transition: background 0.2s; }
+        .collapse-arrow { cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: background 0.2s; }
         .collapse-arrow:hover { background: #cbd5e1; }
         .collapse-arrow i { transition: transform 0.2s; font-size: 14px; }
         .collapsed .collapse-arrow i { transform: rotate(-90deg); }
@@ -105,11 +105,14 @@
         .inline-note-textarea { resize: none; overflow-y: auto; line-height: 1.4; height: 24px; min-height: 24px; }
         .inline-note-textarea:focus { height: auto; max-height: 40px; position: absolute; z-index: 60; width: calc(100% - 100px); background-color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
 
+        /* 列印相關設定：加深表格邊框、顯示簽收區 */
+        #print-footer { display: none; }
         @media print {
             .no-print { display: none !important; }
             .print-show { display: block !important; }
             table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid #64748b !important; padding: 8px !important; text-align: left !important; }
+            /* 加深列印邊框顏色為 Slate-500 (#64748b) */
+            th, td { border: 2px solid #64748b !important; padding: 10px !important; text-align: left !important; color: #0f172a !important; }
             thead { display: table-header-group !important; }
             th:last-child, td:last-child { display: none !important; }
 
@@ -121,17 +124,29 @@
 
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
             .gantt-row.is-parent-row { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #64748b !important; }
-            .gantt-timeline-cell { border-right-color: #94a3b8 !important; }
-            .gantt-row { border-bottom: 1px solid #64748b !important; }
+            /* 加深甘特圖列印邊框 */
+            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #475569 !important; border-width: 1px !important; }
+            .gantt-timeline-cell { border-right-color: #64748b !important; border-style: solid !important; }
             
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
             textarea::placeholder, input::placeholder { color: transparent !important; }
             input, textarea.inline-note-textarea { background-color: transparent !important; border: none !important; box-shadow: none !important; }
             
-            /* 列印專用頁尾設定：固定在頁面底部 */
-            body { padding-bottom: 25px !important; }
-            #print-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; text-align: right; font-size: 12px; color: #64748b; background: white; z-index: 1000; padding: 4px 24px; border-top: 1px solid #e2e8f0; }
+            /* 列印專屬簽收頁尾 */
+            body { padding-bottom: 60px !important; }
+            #print-footer { 
+                display: flex !important; 
+                justify-content: space-between;
+                align-items: flex-end;
+                position: fixed; 
+                bottom: 0; left: 0; right: 0; 
+                font-size: 14px; 
+                color: #0f172a; 
+                background: white; 
+                z-index: 1000; 
+                padding: 12px 32px; 
+                border-top: 2px solid #475569; 
+            }
         }
     </style>
 </head>
@@ -176,11 +191,14 @@
                 </h1>
             </div>
             <div class="flex gap-3 items-center">
+                <!-- 全域列印按鈕 -->
                 <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200 transition-colors shadow-sm font-bold border border-slate-200" title="列印當前頁面">
                     <i class="ph-bold ph-printer text-lg"></i> 列印
                 </button>
                 <div class="h-6 w-px bg-slate-200 mx-1"></div>
-                <div id="header-actions"></div>
+                <div id="header-actions">
+                    <!-- 動態注入新增按鈕 -->
+                </div>
             </div>
         </header>
 
@@ -217,8 +235,10 @@
         <span id="toast-msg" class="font-medium text-base">Notification</span>
     </div>
 
+    <!-- 列印專屬頁尾 (螢幕隱藏，列印時顯示) -->
     <div id="print-footer" class="hidden">
-        表單列印時間：<span id="print-time-span"></span>
+        <div>表單列印時間：<span id="print-time-span"></span></div>
+        <div class="text-base font-bold">簽名/簽收：______________________</div>
     </div>
 
     <script type="module">
@@ -226,22 +246,77 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // 強制使用您的設定檔，連線 Firebase
         const CONFIG = {
             firebase: JSON.parse(`{"apiKey":"AIzaSyA7IeOz4EJ-yMUccDTPOSaDm33fLChVD8Q","authDomain":"sunyu-check.firebaseapp.com","projectId":"sunyu-check","storageBucket":"sunyu-check.appspot.com","messagingSenderId":"627211744361","appId":"1:627211744361:web:58bce4b5009f0c9d5bdef8"}`),
             appId: "sunyu-check",
             cols: {
                 todo: [
-                    { k: 'status', l: '狀態', w: '140px', render: r => r.completed ? `<div class="print:hidden"><button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm"><i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已完成</button></div><div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800"><div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>已完成</div>` : `<div class="print:hidden"><button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm cursor-pointer group w-full"><i class="ph-bold ph-square text-lg text-blue-500 group-hover:scale-110 transition-transform"></i>待處理</button></div><div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800"><div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>完成請打勾</div>` },
-                    { k: 'productionId', l: '生產編號', w: '110px' }, { k: 'assemblyNumber', l: '組裝編號', w: '110px' }, { k: 'partNumber', l: '料號', w: '110px' }, { k: 'modTypes', l: '修改類型', w: '160px', render: r => (r.modTypes || []).length > 0 ? (r.modTypes).map(t => `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-bold mr-1 mb-1 border border-indigo-100">${t}</span>`).join('') : '<span class="text-slate-300">-</span>' },
-                    { k: 'content', l: '修改內容', w: 'auto' }, { k: 'date', l: '日期', w: '110px' }, { k: 'personnel', l: '執行人員', w: '110px' }, { k: 'actions', l: '操作', type: 'actions', w: '150px' }
+                    { 
+                        k: 'status', 
+                        l: '狀態', 
+                        w: '140px', 
+                        render: r => r.completed 
+                            // 已完成：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
+                            ? `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為待處理">
+                                   <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已完成
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>完成請打勾
+                               </div>` 
+                            // 待處理：螢幕顯示可點擊的按鈕，列印時顯示統一的勾選提示
+                            : `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleTodoStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為完成">
+                                   <i class="ph-bold ph-square text-lg text-blue-500 group-hover:scale-110 transition-transform"></i>待處理
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>完成請打勾
+                               </div>` 
+                    },
+                    { k: 'productionId', l: '生產編號', w: '110px' }, 
+                    { k: 'assemblyNumber', l: '組裝編號', w: '110px' }, 
+                    { k: 'partNumber', l: '料號', w: '110px' }, 
+                    { k: 'modTypes', l: '修改類型', w: '160px', render: r => (r.modTypes || []).length > 0 ? (r.modTypes).map(t => `<span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-bold mr-1 mb-1 border border-indigo-100">${t}</span>`).join('') : '<span class="text-slate-300">-</span>' },
+                    { k: 'content', l: '修改內容', w: 'auto' },
+                    { k: 'date', l: '日期', w: '110px' },
+                    // 移除人員欄位，改用頁尾簽名
+                    { k: 'actions', l: '操作', type: 'actions', w: '190px' }
                 ],
                 event: [
-                    { k: 'closed', l: '狀態', w: '140px', render: r => r.closed ? `<div class="print:hidden"><button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm"><i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已結案</button></div><div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800"><div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>確認結案</div>` : `<div class="print:hidden"><button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm cursor-pointer group w-full"><i class="ph-bold ph-square text-lg text-emerald-500 group-hover:scale-110 transition-transform"></i>進行中</button></div><div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800"><div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>確認結案</div>` },
-                    { k: 'date', l: '日期', w: '130px' }, { k: 'matter', l: '事項內容', w: 'auto' }, { k: 'personnel', l: '相關人員', w: '160px' }, { k: 'actions', l: '操作', type: 'actions', w: '220px' } 
+                    { 
+                        k: 'closed', 
+                        l: '狀態', 
+                        w: '140px', 
+                        render: r => r.closed 
+                            ? `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', false)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer group w-full shadow-sm" title="點擊恢復為進行中">
+                                   <i class="ph-bold ph-check-square text-lg group-hover:scale-110 transition-transform"></i>已結案
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm flex items-center justify-center text-sm">V</div>確認結案
+                               </div>` 
+                            : `<div class="print:hidden">
+                                 <button onclick="event.stopPropagation(); window.app.handlers.toggleEventStatus('${r.id}', true)" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm cursor-pointer group w-full" title="點擊標記為結案">
+                                   <i class="ph-bold ph-square text-lg text-emerald-500 group-hover:scale-110 transition-transform"></i>進行中
+                                 </button>
+                               </div>
+                               <div class="hidden print:flex items-center gap-1.5 font-bold text-slate-800">
+                                 <div class="w-5 h-5 border-2 border-slate-800 rounded-sm"></div>確認結案
+                               </div>` 
+                    },
+                    { k: 'date', l: '日期', w: '130px' }, 
+                    { k: 'matter', l: '事項內容', w: 'auto' }, 
+                    { k: 'personnel', l: '相關人員', w: '160px' },
+                    { k: 'actions', l: '操作', type: 'actions', w: '220px' } 
                 ],
                 feedback: [
                     { k: 'feedbackType', l: '類型', w: '130px', render: r => `<span class="px-3 py-1.5 rounded text-sm bg-slate-100 text-slate-700 font-bold border border-slate-200">${r.feedbackType}</span>` }, 
-                    { k: 'problem', l: '問題描述', w: '40%' }, { k: 'solution', l: '解決方案', w: 'auto' },
+                    { k: 'problem', l: '問題描述', w: '40%' }, 
+                    { k: 'solution', l: '解決方案', w: 'auto' },
                     { k: 'status', l: '狀態', w: '110px', render: r => r.status === '已結案' ? '<span class="text-green-600 font-bold text-base">已結案</span>' : '<span class="text-amber-500 font-bold text-base">處理中</span>' }, 
                     { k: 'actions', l: '操作', type: 'actions', w: '110px' }
                 ]
@@ -259,6 +334,7 @@
                 setTimeout(() => t.classList.add('translate-y-32'), 3000);
             },
             addWorkingDays: (startDateStr, days) => {
+                if (!startDateStr || !days) return '-';
                 let current = new Date(startDateStr);
                 let remaining = parseInt(days);
                 while (remaining > 0) {
@@ -328,20 +404,32 @@
                 return new Promise(resolve => {
                     const initAuth = async () => {
                         try {
-                            await signInAnonymously(this.auth);
+                            const isUsingEnvConfig = typeof __firebase_config !== 'undefined' && JSON.stringify(CONFIG.firebase) === __firebase_config;
+                            if (isUsingEnvConfig && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(this.auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(this.auth);
+                            }
                         } catch (e) {
-                            console.error(e);
+                            console.error('Auth error:', e);
+                            resolve(null); // Resolve to unblock UI if auth completely fails
                         }
                     };
                     initAuth();
+                    
                     onAuthStateChanged(this.auth, async (u) => {
                         this.user = u;
                         if(u) {
                             this.coll = collection(this.db, `/artifacts/${CONFIG.appId}/public/data/sharedTodoItems`);
-                            utils.$('#auth-status').textContent = `使用者: ${this.user.uid.slice(0,4)}..`;
+                            if(utils.$('#auth-status')) utils.$('#auth-status').textContent = `使用者: ${this.user.uid.slice(0,4)}..`;
                             resolve(this.user);
                         }
                     });
+
+                    // Failsafe timeout to prevent infinite spinner
+                    setTimeout(() => {
+                        resolve(this.user || null);
+                    }, 6000);
                 });
             }
             sub(cb) {
@@ -349,6 +437,9 @@
                 return onSnapshot(query(this.coll, orderBy("createdAt", "desc")), (snap) => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     cb(data);
+                }, (error) => {
+                    console.error("Firestore error:", error);
+                    utils.toast('連線中斷，請重新整理', '⚠️');
                 });
             }
             async add(data, silent = false) { 
@@ -360,34 +451,73 @@
             async update(id, data) { if(!this.user) return; await updateDoc(doc(this.coll, id), data); }
             async del(id) { 
                 if(!this.user) return;
-                if(confirm('確定要刪除此項目嗎？')) { await deleteDoc(doc(this.coll, id)); utils.toast('已刪除', '🗑️'); return true; }
+                if(confirm('確定要刪除此項目嗎？如果這是父任務，建議先移除子任務的關聯。')) { 
+                    await deleteDoc(doc(this.coll, id)); 
+                    utils.toast('已刪除', '🗑️'); 
+                    return true;
+                }
                 return false;
             }
             async batchUpdateOrders(updates) {
                 if(!this.user) return;
                 const batch = writeBatch(this.db);
-                updates.forEach(({id, order}) => { batch.update(doc(this.coll, id), { order }); });
+                updates.forEach(({id, order}) => {
+                    const ref = doc(this.coll, id);
+                    batch.update(ref, { order });
+                });
                 await batch.commit();
+                utils.toast('排序已更新', '⇅');
             }
         }
         const db = new FirestoreService();
         window.db = db;
 
+        // 預留為空，Canvas 預覽環境會自動注入系統金鑰。若您要下載到自己的電腦執行，請在此填入 'AIzaSy...' 開頭的標準金鑰
         const AI_KEY = ""; 
         const aiService = {
             async call(prompt, isJson = false) {
-                const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
-                for (const model of models) {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${AI_KEY}`;
-                    const body = { contents: [{ parts: [{ text: prompt }] }] };
-                    if (isJson && model.includes('1.5')) body.generationConfig = { responseMimeType: "application/json" };
-                    try {
-                        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                        const data = await res.json();
-                        if (res.ok && data.candidates) return data.candidates[0].content.parts[0].text;
-                    } catch(e) { continue; }
+                // 依據預覽環境規範，使用專屬支援的模型
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${AI_KEY}`;
+                const body = { contents: [{ parts: [{ text: prompt }] }] };
+                
+                if (isJson) {
+                    body.generationConfig = { responseMimeType: "application/json" };
                 }
-                return { error: true, message: "所有模型皆無法連線，請檢查 API Key 或權限。" };
+                
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                let lastError = "未知的錯誤";
+
+                for (let attempt = 0; attempt <= 5; attempt++) {
+                    try {
+                        const res = await fetch(url, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify(body) 
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if (res.ok && data.candidates) {
+                            return data.candidates[0].content.parts[0].text;
+                        } else {
+                            lastError = data.error?.message || "API 回傳錯誤";
+                            if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+                                return { error: true, message: lastError };
+                            }
+                        }
+                    } catch(e) {
+                        lastError = "網路連線異常，或受到跨來源 (CORS) 阻擋";
+                    }
+                    
+                    if (attempt < 5) {
+                        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                    }
+                }
+                
+                return { 
+                    error: true, 
+                    message: `API 呼叫失敗，錯誤原因：${lastError}。請確認是否在正確的環境執行。` 
+                };
             },
             openMenu() {
                 const html = `
@@ -426,106 +556,653 @@
             async analyzeSchedule() {
                 const tasks = window.app.data.filter(t => t.type === 'gantt' && !t.suspended);
                 if(tasks.length === 0) { utils.toast('目前沒有排程可供分析', '⚠️'); return; }
-                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-fill ph-sparkle text-5xl text-amber-400 animate-pulse mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在分析排程資料...</h3></div>`;
+                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-fill ph-sparkle text-5xl text-amber-400 animate-pulse mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在分析排程資料...</h3><p class="text-slate-500 text-sm mt-2">請稍候片刻</p></div>`;
+                utils.$('#modal-footer').innerHTML = '';
                 const today = new Date().toISOString().split('T')[0];
-                const taskStr = tasks.map(t => `- [${t.name}] 進度:${t.progress}%, 結束:${t.endDate||'未知'}`).join('\n');
-                const result = await this.call(`今天是${today}。以下是排程：${taskStr}。請進行健康檢查並給予建議。`, false);
-                utils.$('#modal-body').innerHTML = `<div class="text-slate-700 leading-relaxed">${result}</div>`;
-                utils.$('#modal-footer').innerHTML = `<button onclick="window.modal.close()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">完成</button>`;
+                const taskStr = tasks.map(t => `- [${t.name}] 負責人:${t.assignee||'未指派'}, 進度:${t.progress}%, 結束:${t.endDate||'未知'}`).join('\n');
+                const prompt = `你是一位經驗豐富的工廠排程管理專家。今天是 ${today}。以下是目前的專案排程狀態：\n${taskStr}\n請進行排程健康檢查：1.指出哪些任務已落後或即將落後。2.人力分配是否有過度集中風險。3.給予工廠主管2到3個具體的行動建議。\n請以繁體中文回答，使用乾淨的 HTML 語法輸出。請利用 Tailwind CSS class (例如 class="text-xl font-bold text-red-600 mb-2", class="list-disc pl-5 space-y-2") 讓排版美觀專業。不要包含 markdown 標記。`;
+                
+                const result = await this.call(prompt);
+                
+                if (typeof result === 'string') {
+                    utils.$('#modal-body').innerHTML = `<div class="text-slate-700 leading-relaxed">${result.replace(/```html|```/g, '')}</div>`;
+                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">回上一步</button><button onclick="window.modal.close()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors">完成</button>`;
+                } else if (result && result.error) {
+                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
+                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
+                } else {
+                    utils.$('#modal-body').innerHTML = `<div class="text-red-500 font-bold text-center py-10">分析失敗，未知的錯誤發生。</div>`;
+                    utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
+                }
             },
             async generateTasks() {
-                const projectName = utils.$('#ai-project-input').value.trim();
-                if(!projectName) return;
-                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-bold ph-magic-wand text-5xl text-blue-500 animate-bounce mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在規劃「${projectName}」...</h3></div>`;
-                const prompt = `啟動新專案：「${projectName}」。請拆解成 3-5 個子任務。回傳 JSON Array。欄位："name", "duration", "assignee"。`;
+                const input = utils.$('#ai-project-input');
+                const projectName = input ? input.value.trim() : '';
+                if(!projectName) { utils.toast('請輸入專案名稱', '⚠️'); return; }
+                utils.$('#modal-body').innerHTML = `<div class="flex flex-col items-center justify-center py-12"><i class="ph-bold ph-magic-wand text-5xl text-blue-500 animate-bounce mb-4"></i><h3 class="text-lg font-bold text-slate-700">Gemini 正在規劃「${projectName}」...</h3><p class="text-slate-500 text-sm mt-2">自動拆解子任務與估算工期中</p></div>`;
+                utils.$('#modal-footer').innerHTML = '';
+                const prompt = `你是一個專業的工廠生產排程專家。我現在要啟動一個新專案：「${projectName}」。請幫我把這個專案拆解成 3 到 5 個連續執行的子任務。回傳格式必須是嚴格的 JSON Array，不要包含任何 markdown 標記或其他文字。每個 JSON 物件要有以下欄位："name": 任務名稱(字串), "duration": 預估工作天數(整數), "assignee": 建議指派對象(例如：廠務、工程師 等字串)`;
+                
                 const result = await this.call(prompt, true);
-                try {
-                    const tasks = JSON.parse(result.replace(/```json|```/g, '').trim());
-                    const parentId = await window.db.add({ type: 'gantt', name: projectName, parentId: null, start: utils.date(), duration: 1, progress: 0, order: 99 }, true);
-                    for(let i=0; i<tasks.length; i++) await window.db.add({ type: 'gantt', name: tasks[i].name, parentId: parentId, assignee: tasks[i].assignee, start: utils.date(), duration: tasks[i].duration, progress: 0, order: i }, true);
-                    window.app.switchTab('gantt');
-                    window.modal.close();
-                } catch(e) { utils.toast('生成失敗', '❌'); }
+                
+                if (typeof result === 'string') {
+                    try {
+                        const tasks = JSON.parse(result.replace(/```json|```/g, '').trim());
+                        if(tasks && tasks.length > 0) {
+                            const parentId = await window.db.add({ type: 'gantt', name: projectName, parentId: null, assignee: '', start: utils.date(), duration: 1, progress: 0, order: 99 }, true);
+                            let currentStart = utils.date();
+                            for(let i=0; i<tasks.length; i++) {
+                                await window.db.add({ type: 'gantt', name: tasks[i].name, parentId: parentId, assignee: tasks[i].assignee, start: currentStart, duration: tasks[i].duration, progress: 0, order: i }, true);
+                                currentStart = utils.addWorkingDays(currentStart, tasks[i].duration);
+                            }
+                            utils.toast('✅ 專案智能拆解並建立完成！');
+                            window.modal.close();
+                            window.app.switchTab('gantt');
+                        }
+                    } catch(e) {
+                        utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>生成失敗，AI 回傳格式異常。</b><br><span class="text-xs text-slate-400 mt-2 block break-all text-left max-h-32 overflow-y-auto">${result}</span></div>`;
+                        utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
+                    }
+                } else if (result && result.error) {
+                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10"><i class="ph-bold ph-warning-circle text-4xl mb-2"></i><br><b>API 回傳錯誤</b><br><span class="text-sm mt-2 block">${result.message}</span></div>`;
+                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
+                } else {
+                     utils.$('#modal-body').innerHTML = `<div class="text-red-500 text-center py-10">生成失敗，未知的錯誤發生。</div>`;
+                     utils.$('#modal-footer').innerHTML = `<button onclick="window.ai.openMenu()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">返回</button>`;
+                }
             }
         };
         window.ai = aiService;
 
+        const modal = {
+            el: utils.$('#uni-modal'),
+            open(title, bodyHtml, footerHtml = '') {
+                utils.$('#modal-title').textContent = title;
+                utils.$('#modal-body').innerHTML = bodyHtml;
+                utils.$('#modal-footer').innerHTML = footerHtml;
+                this.el.classList.remove('hidden');
+                this.el.classList.add('flex');
+                setTimeout(() => { this.el.classList.remove('opacity-0'); utils.$('#uni-modal > div').classList.remove('scale-95'); }, 10);
+            },
+            close() { 
+                utils.$('#uni-modal > div').classList.add('scale-95');
+                this.el.classList.add('opacity-0');
+                setTimeout(() => { this.el.classList.add('hidden'); this.el.classList.remove('flex'); }, 300);
+            }
+        };
+        window.modal = modal;
+
+        // 監聽列印事件，即時注入當下時間
         window.addEventListener('beforeprint', () => {
-            document.getElementById('print-time-span').textContent = new Date().toLocaleString('zh-TW');
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-TW', { 
+                year: 'numeric', month: '2-digit', day: '2-digit', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+            });
+            const printSpan = document.getElementById('print-time-span');
+            if(printSpan) printSpan.textContent = timeString;
         });
+
+        const renderer = {
+            table(items, cols, type) {
+                if (!items.length) return `
+                    <div class="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
+                        <i class="ph ph-tray text-6xl text-slate-300 mb-4"></i>
+                        <div class="text-slate-500 font-medium text-lg">目前尚無資料</div>
+                        <button onclick="window.app.openEditModal('${type}')" class="mt-4 text-indigo-600 font-bold hover:underline text-base">新增第一筆${window.app.getTypeName(type)}</button>
+                    </div>`;
+                return `
+                <div class="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-200"><tr>${cols.map(c => `<th class="px-6 py-4 text-left text-sm font-bold text-slate-700 uppercase tracking-wider">${c.l}</th>`).join('')}</tr></thead>
+                            <tbody class="divide-y divide-slate-100 bg-white">
+                                ${items.map(item => {
+                                    // 判斷是否為已完成/結案狀態，若是則將該行變灰且沉底
+                                    const isDone = item.completed || item.closed || item.status === '已結案';
+                                    return `
+                                    <tr class="hover:bg-slate-50 transition-colors group ${isDone ? 'opacity-50 bg-slate-50/50 grayscale' : ''}">
+                                        ${cols.map(c => {
+                                            if (c.type === 'actions') return `
+                                                <td class="px-6 py-4 whitespace-nowrap text-base font-medium opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+                                                    <div class="flex items-center gap-2">
+                                                        <button onclick="window.app.handlers.edit('${type}', '${item.id}')" class="text-indigo-600 hover:text-indigo-800 transition-colors p-1.5 rounded hover:bg-indigo-50" title="編輯"><i class="ph-bold ph-pencil-simple text-xl"></i></button>
+                                                        <button onclick="window.app.handlers.del('${item.id}')" class="text-red-600 hover:text-red-800 transition-colors p-1.5 rounded hover:bg-red-50" title="刪除"><i class="ph-bold ph-trash text-xl"></i></button>
+                                                        ${type === 'todo' ? `
+                                                            <div class="h-5 w-px bg-slate-300 mx-1"></div>
+                                                            <button onclick="window.app.handlers.addToCalendar('${item.id}', 'todo')" class="text-blue-600 hover:text-blue-800 transition-colors p-1.5 rounded hover:bg-blue-50" title="加入行事曆"><i class="ph-bold ph-calendar-plus text-xl"></i></button>
+                                                        ` : ''}
+                                                        ${type === 'event' ? `
+                                                            <div class="h-5 w-px bg-slate-300 mx-1"></div>
+                                                            <button onclick="window.app.handlers.addToCalendar('${item.id}', 'event')" class="text-blue-600 hover:text-blue-800 transition-colors p-1.5 rounded hover:bg-blue-50" title="加入行事曆"><i class="ph-bold ph-calendar-plus text-xl"></i></button>
+                                                            <button onclick="window.app.handlers.toGantt('${item.id}')" class="text-emerald-600 hover:text-emerald-800 font-bold bg-emerald-50 px-2 py-1.5 rounded border border-emerald-200 text-sm flex items-center gap-1"><i class="ph-bold ph-plus"></i>排程</button>
+                                                        ` : ''}
+                                                    </div>
+                                                </td>`;
+                                            return `<td class="px-6 py-4 text-base text-slate-700" style="${c.w ? `min-width:${c.w}`:''}">${c.render ? c.render(item) : (item[c.k] || '<span class="text-slate-300">-</span>')}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                `}).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+            },
+            form(fields, type) {
+                return fields.map(f => `
+                    <div class="mb-5">
+                        <label class="block text-base font-bold text-slate-700 mb-2">${f.label}</label>
+                        ${f.type === 'select' 
+                            ? `<div class="relative"><select name="${f.name}" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none font-medium text-slate-700 text-base transition-colors">${f.opts.map(o => {
+                                const val = typeof o === 'object' ? o.v : o;
+                                const lbl = typeof o === 'object' ? o.l : o;
+                                const isSelected = (f.val || '') == (val || '');
+                                return `<option value="${val}" ${isSelected ? 'selected' : ''}>${lbl}</option>`;
+                            }).join('')}</select><div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><i class="ph-bold ph-caret-down text-lg"></i></div></div>`
+                            : f.type === 'textarea' 
+                                ? `<textarea name="${f.name}" rows="4" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 text-base transition-colors" placeholder="請輸入${f.label}...">${f.val||''}</textarea>`
+                                : f.type === 'checkboxes'
+                                    ? `<div class="flex flex-wrap gap-2 mt-1">
+                                        ${f.opts.map(o => `
+                                            <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors border border-slate-200 hover:border-slate-300 bg-white shadow-sm">
+                                                <input type="checkbox" name="${f.name}" value="${o}" ${(f.val||[]).includes(o)?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">
+                                                <span class="text-sm font-bold text-slate-700">${o}</span>
+                                            </label>
+                                        `).join('')}
+                                       </div>`
+                                    : `<input type="${f.type||'text'}" name="${f.name}" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium text-slate-700 text-base transition-colors" value="${f.val||''}" placeholder="${f.placeholder||''}">`
+                        }
+                    </div>
+                `).join('');
+            }
+        };
+
+        class GanttManager {
+            constructor() {
+                this.zoom = 42; 
+                this.viewStart = new Date();
+                this.viewStart.setDate(this.viewStart.getDate() - 3); 
+                this.daysToShow = 35; 
+                this.filterAssignee = '';
+                this.hideCompleted = false;
+                this.hideWeekends = false; 
+                this.showProgressCol = true;
+                this.nameColWidth = 260; 
+                this.isResizing = false;
+                this.collapsedRows = new Set(); 
+                this.draggedId = null;
+                this.dragOverId = null;
+                this.dragPosition = null; 
+            }
+            setView(mode, val) {
+                if (mode === 'date' && val) {
+                     const d = new Date(val); d.setDate(d.getDate() - 2); 
+                     this.viewStart = d; app.render(); return;
+                }
+                const d = new Date(this.viewStart);
+                if (mode === 'prev') d.setDate(d.getDate() - 7);
+                if (mode === 'next') d.setDate(d.getDate() + 7);
+                if (mode === 'today') {
+                    const now = new Date(); now.setDate(now.getDate() - 2); 
+                    this.viewStart = now; app.render(); return;
+                }
+                this.viewStart = d;
+                app.render();
+            }
+            setZoom(delta) {
+                const oldZoom = this.zoom;
+                this.zoom = Math.max(28, Math.min(130, this.zoom + delta)); 
+                if (this.zoom < oldZoom) this.daysToShow += 4;
+                else this.daysToShow = Math.max(14, this.daysToShow - 2);
+                app.render();
+            }
+            setFilter(assignee) { this.filterAssignee = assignee; app.render(); }
+            toggleCompleted(checked) { this.hideCompleted = checked; app.render(); }
+            toggleWeekends(checked) { this.hideWeekends = checked; app.render(); }
+            toggleProgressCol(checked) { this.showProgressCol = checked; this.updateLayout(); app.render(); }
+            toggleCollapse(id) {
+                if (this.collapsedRows.has(id)) this.collapsedRows.delete(id);
+                else this.collapsedRows.add(id);
+                app.render();
+            }
+            startResize(e) {
+                e.preventDefault(); e.stopPropagation();
+                this.isResizing = true; this.startX = e.pageX; this.startWidth = this.nameColWidth;
+                document.body.style.cursor = 'col-resize';
+                const moveHandler = (e) => {
+                    if (!this.isResizing) return;
+                    this.nameColWidth = Math.max(180, this.startWidth + (e.pageX - this.startX));
+                    this.updateLayout(); app.render(); 
+                };
+                const upHandler = () => {
+                    this.isResizing = false; document.body.style.cursor = 'default';
+                    document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler);
+                };
+                document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler);
+            }
+            updateLayout() {
+                const container = utils.$('#view-gantt');
+                if (!container) return;
+                const totalGridWidth = this.nameColWidth + 60 + 90 + 90 + 60 + 80 + (this.showProgressCol ? 70 : 0); 
+                container.style.setProperty('--name-width', `${this.nameColWidth}px`);
+                container.style.setProperty('--grid-cols', `${totalGridWidth}px`);
+            }
+            handleDragStart(e, id) { this.draggedId = id; e.dataTransfer.effectAllowed = 'move'; e.target.closest('.gantt-row').classList.add('dragging'); }
+            handleDragOver(e, id) {
+                e.preventDefault();
+                if (this.draggedId === id) return;
+                const row = e.target.closest('.gantt-row');
+                const mid = row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+                this.dragOverId = id; this.dragPosition = e.clientY < mid ? 'top' : 'bottom';
+                document.querySelectorAll('.gantt-row').forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+                row.classList.add(this.dragPosition === 'top' ? 'drag-over-top' : 'drag-over-bottom');
+            }
+            async handleDrop(e, targetId) {
+                e.preventDefault();
+                document.querySelectorAll('.gantt-row').forEach(r => r.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+                if (!this.draggedId || this.draggedId === targetId) return;
+                const draggedTask = app.data.find(t => t.id === this.draggedId);
+                const targetTask = app.data.find(t => t.id === targetId);
+                if (!draggedTask || !targetTask || draggedTask.parentId !== targetTask.parentId) { utils.toast('只能在同一層級內排序', '⚠️'); return; }
+                const siblings = app.data.filter(t => t.type === 'gantt' && t.parentId === draggedTask.parentId).sort((a,b) => (a.order||0) - (b.order||0));
+                siblings.splice(siblings.findIndex(t => t.id === this.draggedId), 1); 
+                siblings.splice(this.dragPosition === 'top' ? siblings.findIndex(t => t.id === targetId) : siblings.findIndex(t => t.id === targetId) + 1, 0, draggedTask);
+                await db.batchUpdateOrders(siblings.map((t, idx) => ({ id: t.id, order: idx })));
+                this.draggedId = null;
+            }
+            handleBarDragStart(e, id, isSummary) {
+                if (isSummary) { utils.toast('摘要任務由子任務決定', '🔒'); return; }
+                e.preventDefault(); e.stopPropagation(); 
+                const task = app.data.find(t => t.id === id);
+                if (!task) return;
+                const barEl = e.currentTarget; const startX = e.pageX; let isDragging = false;
+                barEl.style.cursor = 'grabbing'; barEl.style.transition = 'none';
+                const moveHandler = (e) => { const diff = e.pageX - startX; if (Math.abs(diff) > 5) isDragging = true; barEl.style.transform = `translateX(${diff}px)`; };
+                const upHandler = async (e) => {
+                    document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', upHandler);
+                    barEl.style.cursor = 'grab'; barEl.style.transition = ''; barEl.style.transform = ''; 
+                    if (!isDragging) { window.app.handlers.edit('gantt', id); } 
+                    else {
+                        const daysDiff = Math.round((e.pageX - startX) / this.zoom);
+                        if (daysDiff !== 0) {
+                            const newStart = utils.addDays(task.start, daysDiff);
+                            await db.update(id, { start: newStart }); utils.toast(`已移動至 ${newStart}`);
+                        }
+                    }
+                };
+                document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', upHandler);
+            }
+            processTasks(tasks) {
+                const taskMap = new Map();
+                tasks.forEach(t => taskMap.set(t.id, { ...t, children: [] }));
+                const roots = [];
+                tasks.forEach(t => {
+                    const task = taskMap.get(t.id);
+                    if (t.parentId && taskMap.has(t.parentId)) taskMap.get(t.parentId).children.push(task); else roots.push(task);
+                });
+                const sortFn = (a, b) => (a.order || 0) - (b.order || 0);
+                const flatList = [];
+                const processNode = (node, level, prefix) => {
+                    node.wbs = prefix; 
+                    if (node.children.length > 0) {
+                        node.children.sort(sortFn);
+                        const activeChildren = node.children.filter(c => !c.suspended);
+                        const childTimes = activeChildren.map(c => {
+                            const start = new Date(c.start);
+                            return { start: start.getTime(), end: new Date(utils.addWorkingDays(c.start, c.duration)).getTime() };
+                        }).filter(t => !isNaN(t.start));
+                        if (childTimes.length) {
+                            node.start = new Date(Math.min(...childTimes.map(t => t.start))).toISOString().split('T')[0];
+                            const endDateStr = new Date(Math.max(...childTimes.map(t => t.end))).toISOString().split('T')[0];
+                            node.duration = utils.countWorkingDays(node.start, endDateStr);
+                            let totalDur = 0, weightedProg = 0;
+                            activeChildren.forEach(c => { const dur = parseInt(c.duration)||1; totalDur += dur; weightedProg += dur * (parseInt(c.progress)||0); });
+                            node.progress = totalDur ? Math.round(weightedProg / totalDur) : 0;
+                        }
+                        node.isSummary = true;
+                    }
+                    node.endDate = utils.addWorkingDays(node.start, node.duration);
+                    if (this.hideCompleted && parseInt(node.progress) === 100) return;
+                    flatList.push({ ...node, level });
+                    if (!this.collapsedRows.has(node.id)) node.children.forEach((c, i) => processNode(c, level + 1, `${prefix}.${i + 1}`));
+                };
+                roots.sort(sortFn).forEach((root, i) => processNode(root, 0, (i + 1).toString()));
+                return flatList;
+            }
+
+            render(allTasks) {
+                const container = utils.$('#view-gantt');
+                const ganttScrollContainer = container.querySelector('.gantt-container');
+                let scrollTop = 0, scrollLeft = 0;
+                if (ganttScrollContainer) { scrollTop = ganttScrollContainer.scrollTop; scrollLeft = ganttScrollContainer.scrollLeft; }
+
+                const assignees = [...new Set(allTasks.map(t => t.assignee).filter(Boolean))].sort();
+                let filteredTasks = this.filterAssignee ? allTasks.filter(t => t.assignee === this.filterAssignee) : [...allTasks];
+                const displayTasks = this.processTasks(filteredTasks);
+                const today = new Date(), viewStart = new Date(this.viewStart);
+                
+                let headerTimeline = '';
+                const timelineDays = [];
+                for(let i=0; i<this.daysToShow; i++) {
+                    const d = new Date(viewStart); d.setDate(d.getDate() + i);
+                    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                    if (this.hideWeekends && isWeekend) continue; 
+                    timelineDays.push({ date: d, isWeekend });
+                }
+                
+                container.style.setProperty('--timeline-width', `${timelineDays.length * this.zoom}px`);
+                this.updateLayout();
+
+                timelineDays.forEach((dayData) => {
+                    const isToday = dayData.date.toDateString() === today.toDateString();
+                    headerTimeline += `
+                        <div class="gantt-timeline-cell ${dayData.isWeekend ? 'weekend' : ''} ${isToday ? 'bg-red-50/50' : ''}" style="width:${this.zoom}px">
+                            <div class="text-xs leading-tight pt-2 ${isToday ? 'text-red-600 font-bold' : 'text-slate-500 font-medium'}">${['日','一','二','三','四','五','六'][dayData.date.getDay()]}</div>
+                            <div class="text-base font-bold ${isToday ? 'text-red-600' : 'text-slate-700'}">${dayData.date.getDate()}</div>
+                            ${isToday ? `<div class="today-label">Today</div><div class="today-line"></div>` : ''}
+                        </div>`;
+                });
+
+                const gridTemplate = `60px var(--name-width) 90px 90px 60px 80px ${this.showProgressCol ? '70px' : '0px'}`;
+                let rowsHTML = displayTasks.length ? '' : `<div class="p-16 text-center text-slate-400 font-bold col-span-2 bg-white m-4 rounded-lg border-2 border-dashed border-slate-200 text-lg"><i class="ph ph-calendar-slash text-5xl mb-2"></i><br>目前沒有排程資料</div>`;
+
+                displayTasks.forEach(t => {
+                    const start = new Date(t.start), end = new Date(t.endDate);
+                    let visualDuration = 0, renderLeft = -1;
+                    timelineDays.forEach((td, idx) => {
+                         if (td.date >= start && renderLeft === -1) renderLeft = idx;
+                         if (td.date >= start && td.date <= end) visualDuration++;
+                    });
+                    if (renderLeft === -1 && end >= timelineDays[0].date) renderLeft = 0;
+
+                    const left = renderLeft * this.zoom;
+                    const width = Math.max(1, visualDuration) * this.zoom;
+                    const isOverdue = t.progress < 100 && end < today && !t.isSummary && !t.suspended;
+                    const isOutOfView = (end < timelineDays[0].date) || (start > timelineDays[timelineDays.length-1].date);
+                    
+                    let barColor = t.isSummary ? 'is-parent' : (t.progress == 100 ? 'bg-emerald-500' : (isOverdue ? 'bg-rose-500' : 'bg-indigo-600'));
+                    
+                    let barHTML = (!t.suspended && !isOutOfView) ? `
+                        <div class="gantt-bar ${barColor} group-hover:shadow-md" style="left:${left}px; width:${width - 6}px;" onmousedown="window.app.gantt.handleBarDragStart(event, '${t.id}', ${!!t.isSummary})">
+                            ${!t.isSummary ? `<div class="h-full bg-white/20 absolute left-0 top-0 bottom-0" style="width:${t.progress}%"></div><span class="truncate px-2 relative drop-shadow-md text-xs">${t.progress}%</span>` : ''}
+                            ${isOverdue ? '<span class="absolute -right-1 -top-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>' : ''}
+                            <div class="gantt-tooltip">
+                                <div class="font-bold text-indigo-200 mb-1 border-b border-indigo-500/30 pb-1 text-sm">${t.name}</div>
+                                <div class="gantt-info-row"><span class="gantt-info-label">開始:</span> <span>${t.start}</span></div>
+                                <div class="gantt-info-row"><span class="gantt-info-label">結束:</span> <span>${t.endDate}</span></div>
+                                <div class="gantt-info-row"><span class="gantt-info-label">工期:</span> <span>${t.duration}天</span></div>
+                                <div class="mt-1 pt-1 border-t border-slate-600 text-right ${isOverdue?'text-red-400 font-bold':''}">${isOverdue?'⚠ 已延遲':(t.progress==100?'✔ 已完成':'⚡ 進行中')}</div>
+                            </div>
+                        </div>` : '';
+
+                    rowsHTML += `
+                    <div class="contents group hover:bg-slate-50">
+                        <div class="gantt-row grid bg-white items-center sticky-left ${t.isSummary ? 'is-parent-row' : ''}" style="grid-template-columns: ${gridTemplate};" draggable="true" ondragstart="window.app.gantt.handleDragStart(event, '${t.id}')" ondragover="window.app.gantt.handleDragOver(event, '${t.id}')" ondrop="window.app.gantt.handleDrop(event, '${t.id}')">
+                            <div class="px-2 text-sm text-center font-bold text-slate-400 h-full flex items-center justify-center gantt-cell-border draggable-handle cursor-grab"><i class="ph-bold ph-dots-six-vertical text-lg"></i></div>
+                            <div class="px-2 gantt-cell-border flex items-center h-full overflow-hidden relative group/namecol">
+                                <div style="width:${t.level * 18}px" class="flex-shrink-0"></div>
+                                ${t.isSummary ? `<div onclick="window.app.gantt.toggleCollapse('${t.id}')" class="collapse-arrow mr-1 ${this.collapsedRows.has(t.id)?'collapsed':''}"><i class="ph-bold ph-caret-down text-slate-500"></i></div>` : '<div class="w-6"></div>'}
+                                <div class="truncate shrink cursor-pointer hover:text-indigo-600 transition-colors py-2" style="max-width: 50%;" onclick="window.app.handlers.edit('gantt', '${t.id}')" title="${t.name}">
+                                    <span class="${t.isSummary ? 'text-slate-900' : 'text-slate-600 font-medium'} text-sm font-bold">${t.name}</span>
+                                </div>
+                                <textarea class="flex-1 w-0 min-w-[30px] mx-2 text-[13px] bg-transparent border border-transparent hover:bg-slate-100 hover:border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-0.5 outline-none text-slate-600 placeholder:text-slate-300 transition-all z-20 inline-note-textarea print:hidden" placeholder="新增備註" onclick="event.stopPropagation();" onchange="window.app.handlers.updateNote('${t.id}', this.value)" onkeydown="if(event.key === 'Escape') this.blur();">${t.note || ''}</textarea>
+                                <div class="hidden print:block flex-1 w-0 min-w-[30px] mx-2 text-[13px] text-slate-700 py-1 whitespace-pre-wrap break-words">${t.note || ''}</div>
+                                <button onclick="event.stopPropagation(); window.app.handlers.addToCalendar('${t.id}', 'gantt')" class="text-indigo-500 hover:text-indigo-700 z-20 transition-colors flex-shrink-0 print:hidden" title="加入行事曆"><i class="ph-bold ph-calendar-plus"></i></button>
+                                ${t.suspended ? '<i class="ph-fill ph-pause-circle text-red-500 ml-1 text-lg flex-shrink-0"></i>' : ''}
+                                <div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div>
+                            </div>
+                            <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-mono relative group/cell">
+                                ${t.suspended ? '-' : (t.isSummary ? t.start.slice(5) : `<div class="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors rounded px-1 absolute inset-0 z-10 print:static" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus();" title="點擊修改日期">${t.start.slice(5)}</div><input type="date" class="hidden w-full h-full bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-xs rounded z-20 print:hidden text-center" value="${t.start}" onclick="event.stopPropagation();" onblur="window.app.handlers.updateField('${t.id}', 'start', this.value)" onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">`)}
+                            </div>
+                            <div class="px-1 text-sm text-center gantt-cell-border text-slate-400 h-full flex items-center justify-center font-mono">${t.suspended ? '-' : (t.endDate ? t.endDate.slice(5) : '-')}</div>
+                            <div class="px-1 text-sm text-center gantt-cell-border text-slate-600 h-full flex items-center justify-center font-medium relative group/cell">
+                                ${t.suspended ? '-' : (t.isSummary ? t.duration : `<div class="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors rounded px-1 absolute inset-0 z-10 print:static" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus(); this.nextElementSibling.select();" title="點擊修改天數">${t.duration}</div><input type="number" min="1" class="hidden w-full h-8 bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-sm rounded z-20 print:hidden text-center" value="${t.duration}" onclick="event.stopPropagation();" onblur="window.app.handlers.updateField('${t.id}', 'duration', parseInt(this.value) || 1)" onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">`)}
+                            </div>
+                            <div class="px-2 text-sm text-center gantt-cell-border truncate text-slate-600 h-full flex items-center justify-center">${t.assignee ? `<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-medium">${t.assignee.slice(0,3)}</span>` : '-'}</div>
+                            ${this.showProgressCol ? `<div class="px-2 text-xs text-center flex items-center justify-center gantt-cell-border h-full"><div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${t.progress==100?'bg-emerald-500':'bg-indigo-500'}" style="width:${t.progress}%"></div></div></div>` : ''}
+                        </div>
+                        <div class="relative min-h-[48px] h-full border-b border-slate-100 bg-white group-hover:bg-slate-50/50 gantt-timeline-row">
+                            ${timelineDays.map((td, i) => `<div class="absolute top-0 bottom-0 border-r border-slate-100/50 ${td.isWeekend ? 'weekend' : ''} ${td.date.toDateString() === today.toDateString() ? 'bg-red-50/20' : ''}" style="left:${i * this.zoom}px; width:${this.zoom}px; z-index: 0;"></div>`).join('')}
+                            ${barHTML}
+                        </div>
+                    </div>`;
+                });
+
+                container.innerHTML = `
+                    <div class="flex flex-col h-full bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-3 border-b border-slate-200 bg-white flex flex-wrap gap-3 items-center justify-between no-print flex-shrink-0 z-40">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
+                                    <button onclick="window.app.gantt.setView('prev')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded"><i class="ph-bold ph-caret-left text-lg"></i></button>
+                                    <button onclick="window.app.gantt.setView('today')" class="px-3 h-8 text-sm font-bold text-indigo-600 hover:bg-white hover:shadow rounded flex items-center gap-1"><i class="ph-bold ph-calendar text-lg"></i> 今天</button>
+                                    <input type="date" id="gantt-date-picker" onchange="window.app.gantt.setView('date', this.value)" class="h-8 bg-transparent border-0 text-sm font-medium text-slate-600 focus:ring-0 w-[120px]">
+                                    <button onclick="window.app.gantt.setView('next')" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow rounded"><i class="ph-bold ph-caret-right text-lg"></i></button>
+                                </div>
+                                <div class="flex items-center gap-1 text-slate-500 px-2 py-1">
+                                    <button onclick="window.app.gantt.setZoom(-10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg"><i class="ph ph-minus"></i></button>
+                                    <i class="ph ph-magnifying-glass text-lg"></i>
+                                    <button onclick="window.app.gantt.setZoom(10)" class="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-lg"><i class="ph ph-plus"></i></button>
+                                </div>
+                                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                                <div class="flex items-center gap-4 text-sm font-medium text-slate-600 hidden md:flex">
+                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800"><input type="checkbox" onchange="window.app.gantt.toggleCompleted(this.checked)" ${this.hideCompleted?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">隱藏完成</label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800"><input type="checkbox" onchange="window.app.gantt.toggleWeekends(this.checked)" ${this.hideWeekends?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">隱藏週末</label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800"><input type="checkbox" onchange="window.app.gantt.toggleProgressCol(this.checked)" ${this.showProgressCol?'checked':''} class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4">進度欄</label>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <select onchange="window.app.gantt.setFilter(this.value)" class="pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 shadow-sm">
+                                        <option value="">所有人員</option>
+                                        ${assignees.map(p => `<option value="${p}" ${this.filterAssignee===p?'selected':''}>${p}</option>`).join('')}
+                                    </select>
+                                    <i class="ph-bold ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                </div>
+                                <button onclick="window.ai.openMenu()" class="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-md text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow font-bold">
+                                    <i class="ph-fill ph-sparkle text-lg animate-pulse"></i> AI 助理
+                                </button>
+                            </div>
+                        </div>
+                        <div class="gantt-container bg-white custom-scrollbar">
+                            <div class="gantt-grid-layout">
+                                <div class="sticky-corner h-14 grid divide-x divide-slate-200 bg-slate-50 z-40 border-b border-slate-200" style="grid-template-columns: ${gridTemplate};">
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700">WBS</div>
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700 header-cell-resizable relative">任務名稱<div class="col-resizer" onmousedown="window.app.gantt.startResize(event)"></div></div>
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700">開始</div>
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700">結束</div>
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700">天數</div>
+                                    <div class="flex items-center justify-center text-sm font-bold text-slate-700">負責</div>
+                                    ${this.showProgressCol ? '<div class="flex items-center justify-center text-sm font-bold text-slate-700">進度</div>' : ''}
+                                </div>
+                                <div class="sticky-header h-14 flex relative overflow-hidden bg-white z-30 border-b border-slate-200">${headerTimeline}</div>
+                                ${rowsHTML}
+                            </div>
+                        </div>
+                    </div>`;
+                
+                requestAnimationFrame(() => {
+                    const newScroll = container.querySelector('.gantt-container');
+                    if (newScroll) { newScroll.scrollTop = scrollTop; newScroll.scrollLeft = scrollLeft; }
+                });
+
+                setTimeout(() => {
+                    const picker = utils.$('#gantt-date-picker');
+                    if(picker && !picker.value) { const d = new Date(this.viewStart); d.setDate(d.getDate() + 2); picker.value = utils.date(d); }
+                }, 0);
+            }
+        }
 
         const app = {
             data: [], currentTab: 'todo', gantt: new GanttManager(),
             init() {
+                // 安全的 Firebase 載入與超時處理
+                const loadFallback = setTimeout(() => {
+                    const loader = utils.$('#loading');
+                    if(loader && !loader.classList.contains('hidden')) {
+                        loader.classList.add('hidden');
+                        utils.toast('連線超時，請檢查網路或重整頁面', '⚠️');
+                    }
+                }, 5000);
+
                 db.init().then(() => {
-                    db.sub(data => { this.data = data; utils.$('#loading').classList.add('hidden'); this.render(); });
+                    clearTimeout(loadFallback);
+                    if (db.user) {
+                        db.sub(data => {
+                            this.data = data;
+                            utils.$('#loading').classList.add('opacity-0'); 
+                            setTimeout(() => utils.$('#loading').classList.add('hidden'), 500);
+                            this.render();
+                        });
+                    } else {
+                        utils.$('#loading').classList.add('hidden');
+                    }
                 });
+                
                 window.app = this;
                 this.handlers = {
                     del: async (id) => { if(await db.del(id)) window.modal.close(); },
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: async (eventId) => {
                         const event = this.data.find(i => i.id === eventId);
-                        await db.add({ type: 'gantt', name: `[一般] ${event.matter}`, assignee: event.personnel, start: event.date, duration: 5, progress: 0, order: 99 });
+                        const duration = event.priority === 'high' ? 3 : (event.priority === 'medium' ? 5 : 7);
+                        await db.add({ type: 'gantt', name: `[一般] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
                         this.switchTab('gantt');
                     },
-                    updateNote: async (id, note) => { await db.update(id, { note }); },
-                    updateField: async (id, field, value) => { await db.update(id, {[field]: value}); utils.toast('已更新'); },
-                    toggleTodoStatus: async (id, isCompleted) => { await db.update(id, { completed: isCompleted }); },
-                    toggleEventStatus: async (id, isClosed) => { await db.update(id, { closed: isClosed }); },
+                    updateNote: async (id, note) => { try { await db.update(id, { note }); } catch(e) { utils.toast('備註更新失敗', '❌'); } },
+                    updateField: async (id, field, value) => {
+                        try {
+                            if (field === 'duration' && (!value || value < 1)) value = 1;
+                            const updateObj = {}; updateObj[field] = value; await db.update(id, updateObj);
+                            utils.toast(`已更新${field === 'start' ? '開始日期' : '天數'}`);
+                        } catch(e) { utils.toast('更新失敗，請確認權限', '❌'); }
+                    },
+                    toggleTodoStatus: async (id, isCompleted) => {
+                        try { await db.update(id, { completed: isCompleted }); utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理'); } 
+                        catch(e) { utils.toast('狀態更新失敗', '❌'); }
+                    },
+                    toggleEventStatus: async (id, isClosed) => {
+                        try { await db.update(id, { closed: isClosed }); utils.toast(isClosed ? '事件已標記為結案' : '事件已恢復為進行中'); } 
+                        catch(e) { utils.toast('狀態更新失敗', '❌'); }
+                    },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
-                        let start = type === 'todo' ? item.date : item.start;
-                        let end = type === 'todo' ? start : utils.addWorkingDays(item.start, item.duration);
-                        window.modal.open('加入行事曆', `
-                            <button id="btn-google" class="w-full p-4 border rounded-xl hover:bg-blue-50">Google 日曆</button>
-                            <button id="btn-apple" class="w-full p-4 border rounded-xl hover:bg-slate-50 mt-2">Apple Calendar</button>
-                        `);
+                        if (!item) return;
+                        let title = '', details = '', start = '', end = '';
+                        if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
+                        else if (type === 'event') { title = `[事件] ${item.matter}`; details = `人員: ${item.personnel}`; start = item.date; end = start; }
+                        else if (type === 'gantt') { title = `[排程] ${item.name}`; details = `負責人: ${item.assignee||'-'}\n進度: ${item.progress}%`; start = item.start; end = utils.addWorkingDays(item.start, item.duration); }
+                        
+                        const html = `
+                            <div class="flex flex-col gap-4 py-2">
+                                <button id="btn-google-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 transition-all text-left shadow-sm">
+                                    <div class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center flex-shrink-0"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" class="w-6 h-6"></div>
+                                    <div><div class="font-bold text-slate-800 text-lg">Google 日曆</div><div class="text-sm text-slate-500">在瀏覽器中開啟並加入</div></div>
+                                </button>
+                                <button id="btn-apple-calendar" class="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all text-left shadow-sm">
+                                    <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center flex-shrink-0"><i class="ph-fill ph-apple-logo text-2xl"></i></div>
+                                    <div><div class="font-bold text-slate-800 text-lg">Apple Calendar</div><div class="text-sm text-slate-500">下載 .ics 檔案 (適用 iOS/Mac)</div></div>
+                                </button>
+                            </div>`;
+                        window.modal.open('加入行事曆', html, `<button onclick="window.modal.close()" class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors">關閉</button>`);
                         setTimeout(() => {
-                            utils.$('#btn-google').onclick = () => utils.openGoogleCalendar(item.name || item.matter, '', start, end);
-                            utils.$('#btn-apple').onclick = () => utils.generateICS(item.name || item.matter, '', start, end);
+                            const bg = document.getElementById('btn-google-calendar'), ba = document.getElementById('btn-apple-calendar');
+                            if(bg) bg.addEventListener('click', () => window.utils.openGoogleCalendar(title, details, start, end));
+                            if(ba) ba.addEventListener('click', () => window.utils.generateICS(title, details, start, end));
                         }, 50);
                     },
                     copyGantt: async () => {
                         const payload = Object.fromEntries(new FormData(utils.$('#edit-form')));
-                        payload.name += ' (複製)';
-                        await db.add({ type: 'gantt', ...payload });
-                        window.modal.close();
+                        payload.name = (payload.name || '未命名') + ' (複製)'; payload.duration = parseInt(payload.duration)||1; payload.progress = parseInt(payload.progress)||0; payload.order = parseInt(payload.order)||0;
+                        if (payload.parentId === "") payload.parentId = null; payload.suspended = utils.$('#edit-form [name=suspended]')?.checked || false;
+                        try { await db.add({ type: 'gantt', ...payload }); window.modal.close(); utils.toast('已複製', '📋'); } catch(e) { utils.toast('複製失敗', '❌'); }
                     },
                     save: async (id, type) => {
                         const form = utils.$('#edit-form');
-                        const payload = Object.fromEntries(new FormData(form));
-                        if(type === 'gantt') { payload.duration = parseInt(payload.duration)||1; payload.progress = parseInt(payload.progress)||0; payload.order = parseInt(payload.order)||0; if (payload.parentId === "") payload.parentId = null; payload.suspended = !!form.querySelector('[name=suspended]')?.checked; }
-                        id ? await db.update(id, payload) : await db.add({ type, ...payload });
-                        window.modal.close();
+                        const formData = new FormData(form);
+                        const payload = Object.fromEntries(formData);
+
+                        if(type === 'todo') {
+                            payload.modTypes = formData.getAll('modTypes');
+                            payload.completed = form.querySelector('[name=completed]')?.checked || false; 
+                        } else if(type === 'gantt') { 
+                            payload.duration = parseInt(payload.duration)||1; 
+                            payload.progress = parseInt(payload.progress)||0; 
+                            payload.order = parseInt(payload.order)||0; 
+                            if (payload.parentId === "") payload.parentId = null; 
+                            payload.suspended = form.querySelector('[name=suspended]')?.checked || false; 
+                        } else if(type==='event') {
+                            payload.closed = form.querySelector('[name=closed]')?.checked || false; 
+                        }
+
+                        try { id ? await db.update(id, payload) : await db.add({ type, ...payload }); window.modal.close(); } catch(e) { utils.toast('儲存失敗', '❌'); }
                     }
                 };
             },
             switchTab(tab) {
                 this.currentTab = tab;
-                document.querySelectorAll('.nav-btn').forEach(b => { b.classList.toggle('bg-slate-800', b.dataset.tab === tab); b.classList.toggle('text-white', b.dataset.tab === tab); });
-                utils.$('#page-title').innerHTML = `<span class="w-1.5 h-7 bg-indigo-500 rounded-full"></span>${utils.$(`button[data-tab="${tab}"]`).textContent.trim()}`;
-                utils.$('#header-actions').innerHTML = `<button onclick="window.app.openEditModal('${tab}')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold"><i class="ph ph-plus"></i> 新增</button>`;
+                document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-slate-800', 'text-white', 'shadow-lg'); b.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white'); });
+                const activeBtn = utils.$(`button[data-tab="${tab}"]`);
+                activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-lg'); activeBtn.classList.remove('text-slate-300');
+                utils.$('#page-title').innerHTML = `<span class="w-1.5 h-7 bg-indigo-500 rounded-full"></span>${activeBtn.textContent.trim()}`;
+                
+                const btnClass = "bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 shadow-md transition-all flex items-center gap-2 text-base font-bold";
+                utils.$('#header-actions').innerHTML = `<button onclick="window.app.openEditModal('${tab}')" class="${btnClass}"><i class="ph-bold ph-plus text-lg"></i> 新增${tab==='gantt'?'任務':'項目'}</button>`;
                 this.render();
             },
             render() {
                 const view = utils.$(`#view-${this.currentTab}`);
-                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-                view.classList.remove('hidden');
-                const items = this.data.filter(i => i.type === this.currentTab);
-                if (['todo', 'event', 'feedback'].includes(this.currentTab)) view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
-                else if (this.currentTab === 'gantt') this.gantt.render(items);
+                let scrollTop = 0, scrollLeft = 0;
+                if (view && !view.classList.contains('hidden')) { scrollTop = view.scrollTop; scrollLeft = view.scrollLeft; }
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); view.classList.remove('hidden');
+                
+                let items = this.data.filter(i => i.type === this.currentTab);
+                
+                if (this.currentTab === 'todo') {
+                    items.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+                } else if (this.currentTab === 'event') {
+                    items.sort((a, b) => (a.closed === b.closed ? 0 : a.closed ? 1 : -1));
+                } else if (this.currentTab === 'feedback') {
+                    items.sort((a, b) => (a.status === '已結案' && b.status !== '已結案' ? 1 : a.status !== '已結案' && b.status === '已結案' ? -1 : 0));
+                }
+
+                if (['todo', 'event', 'feedback'].includes(this.currentTab)) {
+                    view.innerHTML = renderer.table(items, CONFIG.cols[this.currentTab], this.currentTab);
+                    requestAnimationFrame(() => { view.scrollTop = scrollTop; view.scrollLeft = scrollLeft; });
+                } else if (this.currentTab === 'gantt') { this.gantt.render(items); }
             },
             openEditModal(type, id = null) {
                 const item = id ? this.data.find(i => i.id === id) : {};
                 let fields = [];
-                if (type === 'todo') fields = [{ label: '生產編號', name: 'productionId', val: item.productionId }, { label: '組裝編號', name: 'assemblyNumber', val: item.assemblyNumber }, { label: '料號', name: 'partNumber', val: item.partNumber }, { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, { label: '執行人員', name: 'personnel', val: item.personnel }, { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }];
+                if (type === 'todo') fields = [
+                    { label: '生產編號', name: 'productionId', val: item.productionId }, 
+                    { label: '組裝編號', name: 'assemblyNumber', val: item.assemblyNumber },
+                    { label: '料號', name: 'partNumber', val: item.partNumber }, 
+                    { label: '修改類型', name: 'modTypes', type: 'checkboxes', opts: ['改版', '換圖', 'BOM修改', '其他'], val: item.modTypes || [] },
+                    { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, 
+                    { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }
+                ];
                 if (type === 'event') fields = [{ label: '事件日期', name: 'date', type: 'date', val: item.date || utils.date() }, { label: '事項內容', name: 'matter', val: item.matter }, { label: '相關人員', name: 'personnel', val: item.personnel }];
-                if (type === 'gantt') fields = [{ label: '任務名稱', name: 'name', val: item.name }, { label: '開始日期', name: 'start', type: 'date', val: item.start || utils.date() }, { label: '工期(天)', name: 'duration', type: 'number', val: item.duration || 1 }, { label: '進度(%)', name: 'progress', type: 'number', val: item.progress || 0 }];
-                window.modal.open('編輯項目', `<form id="edit-form">${renderer.form(fields, type)}</form>`, `<button onclick="window.app.handlers.save('${id||''}', '${type}')" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg">儲存</button>`);
-            },
-            getTypeName(type) { return { 'todo': '待辦', 'event': '事件', 'feedback': '反饋', 'gantt': '排程' }[type] || '項目'; }
+                if (type === 'feedback') fields = [{ label: '反饋類型', name: 'feedbackType', type: 'select', opts: ['硬體','軟體','流程','其他'], val: item.feedbackType }, { label: '問題描述', name: 'problem', type: 'textarea', val: item.problem }, { label: '解決方案', name: 'solution', type: 'textarea', val: item.solution }];
+                if (type === 'gantt') {
+                    const potentialParents = this.data.filter(i => { if (i.type !== 'gantt' || i.id === id) return false; if (id) { let a = i, s = 0; while(a.parentId && s < 100) { if(a.parentId === id) return false; a = this.data.find(t => t.id === a.parentId); if(!a) break; s++; } } return true; });
+                    const parentOpts = [{v: '', l: '無 (設為頂層任務)'}, ...potentialParents.map(p => ({v: p.id, l: p.name}))];
+                    fields = [{ label: '任務名稱', name: 'name', val: item.name }, { label: '備註', name: 'note', type: 'textarea', val: item.note }, { label: '父任務', name: 'parentId', type: 'select', opts: parentOpts, val: item.parentId || '' }, { label: '負責人', name: 'assignee', val: item.assignee }, { label: '開始日期', name: 'start', type: 'date', val: item.start || utils.date() }, { label: '工期(天)', name: 'duration', type: 'number', val: item.duration || 1 }, { label: '進度(%)', name: 'progress', type: 'number', val: item.progress || 0 }, { label: '排序', name: 'order', type: 'number', val: item.order || 0 }];
+                }
+                let extraHtml = '';
+                if(type === 'todo' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="completed" ${item.completed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-slate-700">已完成</span></label></div>`;
+                if(type === 'event' && id) extraHtml = `<div class="mt-4 p-4 bg-slate-50 rounded border border-slate-200"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="closed" ${item.closed?'checked':''} class="w-5 h-5 text-indigo-600 rounded"> <span class="font-bold text-slate-700">已結案</span></label></div>`;
+                if(type === 'gantt') extraHtml = `<div class="mt-4 p-4 bg-red-50 rounded border border-red-100"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="suspended" ${item.suspended?'checked':''} class="w-5 h-5 text-red-600 rounded"> <span class="font-bold text-red-700">暫緩實施 (不顯示於排程)</span></label></div>`;
+
+                const copyBtn = (id && type === 'gantt') ? `<button type="button" onclick="window.app.handlers.copyGantt()" class="px-5 py-2.5 text-blue-600 font-bold hover:bg-blue-50 rounded-lg mr-2"><i class="ph-bold ph-copy text-lg"></i> 複製</button>` : '';
+                window.modal.open(
+                    id ? `編輯${{todo:'待辦',event:'事件',feedback:'反饋',gantt:'排程'}[type]}` : `新增${{todo:'待辦',event:'事件',feedback:'反饋',gantt:'排程'}[type]}`,
+                    `<form id="edit-form">${renderer.form(fields, type)}${extraHtml}</form>`,
+                    `${id ? `<button type="button" onclick="window.app.handlers.del('${id}')" class="px-5 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-lg mr-auto"><i class="ph-bold ph-trash"></i> 刪除</button>` : ''}
+                     ${copyBtn}<button onclick="window.modal.close()" class="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">取消</button><button onclick="window.app.handlers.save('${id||''}', '${type}')" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700"><i class="ph-bold ph-floppy-disk"></i> 儲存</button>`
+                );
+            }
         };
+
         app.init();
     </script>
 </body>
