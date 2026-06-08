@@ -821,7 +821,19 @@
                                 ${t.suspended ? '-' : (t.isSummary ? t.duration : `<div class="w-full h-full flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors rounded px-1 absolute inset-0 z-10 print:static" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus(); this.nextElementSibling.select();" title="點擊修改天數">${t.duration}</div><input type="number" min="1" class="hidden w-full h-8 bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-sm rounded z-20 print:hidden text-center" value="${t.duration}" onclick="event.stopPropagation();" onblur="window.app.handlers.updateField('${t.id}', 'duration', parseInt(this.value) || 1)" onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">`)}
                             </div>
                             <div class="px-2 text-sm text-center gantt-cell-border truncate text-slate-600 h-full flex items-center justify-center">${t.assignee ? `<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-medium">${t.assignee.slice(0,3)}</span>` : '-'}</div>
-                            ${this.showProgressCol ? `<div class="px-2 text-xs text-center flex items-center justify-center gantt-cell-border h-full"><div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${t.progress==100?'bg-emerald-500':'bg-indigo-500'}" style="width:${t.progress}%"></div></div></div>` : ''}
+                            
+                            <!-- 新增：進度欄位行內點擊編輯 -->
+                            ${this.showProgressCol ? `
+                            <div class="px-2 text-xs text-center flex items-center justify-center gantt-cell-border h-full relative group/prog">
+                                ${t.suspended ? '-' : (t.isSummary ? `
+                                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${t.progress==100?'bg-emerald-500':'bg-indigo-500'}" style="width:${t.progress}%"></div></div>
+                                ` : `
+                                    <div class="w-full h-full flex items-center justify-center cursor-pointer transition-colors rounded absolute inset-0 z-10 print:static group-hover/prog:bg-slate-100" onclick="event.stopPropagation(); this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.focus(); this.nextElementSibling.select();" title="點擊修改進度">
+                                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden mx-1 shadow-inner"><div class="h-2 rounded-full ${t.progress==100?'bg-emerald-500':'bg-indigo-500'}" style="width:${t.progress}%"></div></div>
+                                    </div>
+                                    <input type="number" min="0" max="100" class="hidden w-[90%] h-8 bg-white border border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none text-sm rounded z-20 print:hidden text-center mx-auto" value="${t.progress}" onclick="event.stopPropagation();" onblur="window.app.handlers.updateField('${t.id}', 'progress', parseInt(this.value) || 0)" onkeydown="if(event.key === 'Enter') this.blur(); if(event.key === 'Escape') { this.classList.add('hidden'); this.previousElementSibling.classList.remove('hidden'); }">
+                                `)}
+                            </div>` : ''}
                         </div>
                         <div class="relative min-h-[48px] h-full border-b border-slate-100 bg-white group-hover:bg-slate-50/50 gantt-timeline-row">
                             ${timelineDays.map((td, i) => `<div class="absolute top-0 bottom-0 border-r border-slate-100/50 ${td.isWeekend ? 'weekend' : ''} ${td.date.toDateString() === today.toDateString() ? 'bg-red-50/20' : ''}" style="left:${i * this.zoom}px; width:${this.zoom}px; z-index: 0;"></div>`).join('')}
@@ -908,36 +920,42 @@
                     toGantt: async (eventId) => {
                         const event = this.data.find(i => i.id === eventId);
                         const duration = event.priority === 'high' ? 3 : (event.priority === 'medium' ? 5 : 7);
-                        await db.add({ type: 'gantt', name: `[事件] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
+                        await db.add({ type: 'gantt', name: `[${event.priority==='high'?'急':'一般'}] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
                         this.switchTab('gantt');
                     },
                     updateNote: async (id, note) => { try { await db.update(id, { note }); } catch(e) { utils.toast('備註更新失敗', '❌'); } },
                     updateField: async (id, field, value) => {
                         try {
                             if (field === 'duration' && (!value || value < 1)) value = 1;
+                            if (field === 'progress') { value = Math.min(100, Math.max(0, parseInt(value) || 0)); }
                             const updateObj = {}; updateObj[field] = value; await db.update(id, updateObj);
-                            utils.toast(`已更新${field === 'start' ? '開始日期' : '天數'}`);
+                            utils.toast(`已更新${field === 'start' ? '開始日期' : (field === 'duration' ? '天數' : '進度')}`);
                         } catch(e) { utils.toast('更新失敗，請確認權限', '❌'); }
                     },
                     toggleTodoStatus: async (id, isCompleted) => {
                         try {
                             await db.update(id, { completed: isCompleted });
                             utils.toast(isCompleted ? '項目已標記為完成' : '項目已恢復為待處理');
-                        } catch(e) { console.error(e); utils.toast('狀態更新失敗', '❌'); }
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
                     },
-                    // 新增：事件追蹤狀態切換
                     toggleEventStatus: async (id, isClosed) => {
                         try {
                             await db.update(id, { closed: isClosed });
                             utils.toast(isClosed ? '事件已完成' : '事件已恢復為待處理');
-                        } catch(e) { console.error(e); utils.toast('狀態更新失敗', '❌'); }
+                        } catch(e) {
+                            console.error(e);
+                            utils.toast('狀態更新失敗', '❌');
+                        }
                     },
                     addToCalendar: (id, type) => {
                         const item = this.data.find(i => i.id === id);
                         if (!item) return;
                         let title = '', details = '', start = '', end = '';
                         if (type === 'todo') { title = `[待修改] ${item.productionId || ''} ${item.partNumber || ''}`; details = `組裝編號: ${item.assemblyNumber || '-'}\n修改類型: ${(item.modTypes || []).join(', ')}\n修改內容: ${item.content || ''}`; start = item.date; end = start; }
-                        else if (type === 'event') { title = `[工廠事件] ${item.matter}`; details = `人員: ${item.personnel}\n預計完成: ${item.expectedDate || '-'}\n備註: ${item.note || ''}`; start = item.date; end = item.expectedDate || start; }
+                        else if (type === 'event') { title = `[工廠] ${item.matter}`; details = `人員: ${item.personnel}\n預計完成: ${item.expectedDate || '-'}\n備註: ${item.note || ''}`; start = item.date; end = item.expectedDate || start; }
                         else if (type === 'gantt') { title = `[排程] ${item.name}`; details = `負責人: ${item.assignee||'-'}\n進度: ${item.progress}%`; start = item.start; end = utils.addWorkingDays(item.start, item.duration); }
                         const html = `
                             <div class="flex flex-col gap-4 py-2">
@@ -1022,13 +1040,12 @@
                 let fields = [];
                 if (type === 'todo') fields = [
                     { label: '生產編號', name: 'productionId', val: item.productionId }, 
-                    { label: '組裝編號', name: 'assemblyNumber', val: item.assemblyNumber },
+                    { label: '組裝編號', name: 'assemblyNumber', val: item.assemblyNumber }, 
                     { label: '料號', name: 'partNumber', val: item.partNumber }, 
                     { label: '修改類型', name: 'modTypes', type: 'checkboxes', opts: ['改版', '換圖', 'BOM修改', '其他'], val: item.modTypes || [] },
                     { label: '修改內容', name: 'content', type: 'textarea', val: item.content }, 
                     { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }
                 ];
-                // 更新事件追蹤表單：移除優先程度，新增預計完成與備註
                 if (type === 'event') fields = [
                     { label: '建立日期', name: 'date', type: 'date', val: item.date || utils.date() }, 
                     { label: '事項內容', name: 'matter', val: item.matter }, 
