@@ -67,6 +67,8 @@
         .gantt-bar.is-parent::after { right: 0; border-width: 0 8px 8px 0; border-color: transparent #334155 transparent transparent; transform: rotate(-90deg); }
 
         .gantt-row.is-parent-row { background-color: #f1f5f9 !important; font-weight: 700; color: #0f172a; }
+        /* 放大父件欄位字體 */
+        .gantt-row.is-parent-row .text-sm { font-size: 16px !important; }
         .gantt-row.is-parent-row:hover { background-color: #e2e8f0 !important; }
 
         .today-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #ef4444; z-index: 15; pointer-events: none; box-shadow: 0 0 4px rgba(239, 68, 68, 0.4); }
@@ -125,10 +127,10 @@
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
             .gantt-row.is-parent-row { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             
-            /* 加深周計畫排程的列印邊框，讓印表機印得清楚 */
-            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #64748b !important; border-width: 1px !important; }
-            .gantt-timeline-cell { border-right-color: #64748b !important; border-right-style: dashed !important; }
-            .gantt-row { border-bottom: 1px solid #64748b !important; }
+            /* 讓周計畫排程的列印邊框變細 (0.5pt) */
+            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #64748b !important; border-width: 0.5pt !important; }
+            .gantt-timeline-cell { border-right-color: #64748b !important; border-right-style: dashed !important; border-right-width: 0.5pt !important; }
+            .gantt-row { border-bottom: 0.5pt solid #64748b !important; }
             
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
             textarea::placeholder, input::placeholder { color: transparent !important; }
