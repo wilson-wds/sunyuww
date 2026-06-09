@@ -125,10 +125,10 @@
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
             .gantt-row.is-parent-row { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             
-            /* 還原周計畫排程的列印邊框，保持原有的清爽感 */
-            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #cbd5e1 !important; border-width: 1px !important; }
-            .gantt-timeline-cell { border-right-color: #cbd5e1 !important; border-right-style: dashed !important; }
-            .gantt-row { border-bottom: 1px solid #e2e8f0 !important; }
+            /* 加深周計畫排程的列印邊框，讓印表機印得清楚 */
+            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #64748b !important; border-width: 1px !important; }
+            .gantt-timeline-cell { border-right-color: #64748b !important; border-right-style: dashed !important; }
+            .gantt-row { border-bottom: 1px solid #64748b !important; }
             
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
             textarea::placeholder, input::placeholder { color: transparent !important; }
