@@ -527,7 +527,7 @@
                                     // 判斷是否為已完成/結案狀態，若是則將該行變灰且沉底
                                     const isDone = item.completed || item.closed || item.status === '已結案';
                                     return `
-                                    <tr class="hover:bg-slate-50 transition-colors group ${isDone ? 'opacity-50 bg-slate-50/50 grayscale' : ''}">
+                                    <tr class="hover:bg-slate-50 transition-colors group ${isDone ? 'opacity-50 bg-slate-50/50 grayscale print:hidden' : ''}">
                                         ${cols.map(c => {
                                             if (c.type === 'actions') return `
                                                 <td class="px-6 py-4 whitespace-nowrap text-base font-medium opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
@@ -923,8 +923,17 @@
                     edit: (type, id) => this.openEditModal(type, id),
                     toGantt: async (eventId) => {
                         const event = this.data.find(i => i.id === eventId);
-                        const duration = event.priority === 'high' ? 3 : (event.priority === 'medium' ? 5 : 7);
-                        await db.add({ type: 'gantt', name: `[${event.priority==='high'?'急':'一般'}] ${event.matter}`, assignee: event.personnel, start: event.date, duration, progress: 0, order: 99 });
+                        const duration = 3; // 預設 3 天
+                        await db.add({ 
+                            type: 'gantt', 
+                            name: `[事件] ${event.matter}`, 
+                            assignee: event.personnel, 
+                            start: event.date, 
+                            duration, 
+                            progress: 0, 
+                            order: 99,
+                            note: event.note || '' // 將事件的備註一併帶入排程
+                        });
                         this.switchTab('gantt');
                     },
                     updateNote: async (id, note) => { try { await db.update(id, { note }); } catch(e) { utils.toast('備註更新失敗', '❌'); } },
