@@ -124,17 +124,19 @@
 
             .gantt-bar { -webkit-print-color-adjust: exact; box-shadow: none !important; }
             .gantt-row.is-parent-row { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            /* 加深甘特圖列印邊框 */
-            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #475569 !important; border-width: 1px !important; }
-            .gantt-timeline-cell { border-right-color: #64748b !important; border-style: solid !important; }
+            
+            /* 還原周計畫排程的列印邊框，保持原有的清爽感 */
+            .gantt-row, .gantt-cell-border, .gantt-timeline-cell, .sticky-left, .sticky-header, .sticky-corner, .gantt-timeline-row { border-color: #cbd5e1 !important; border-width: 1px !important; }
+            .gantt-timeline-cell { border-right-color: #cbd5e1 !important; border-right-style: dashed !important; }
+            .gantt-row { border-bottom: 1px solid #e2e8f0 !important; }
             
             .sticky-left, .sticky-header, .sticky-corner { position: static !important; box-shadow: none !important; }
             textarea::placeholder, input::placeholder { color: transparent !important; }
             input, textarea.inline-note-textarea { background-color: transparent !important; border: none !important; box-shadow: none !important; }
             
-            /* 列印專屬簽收頁尾 */
-            body { padding-bottom: 60px !important; }
-            #print-footer { 
+            /* 列印專屬簽收頁尾 (針對待修改、事件等表格，周計畫不顯示) */
+            body:not([data-print-tab="gantt"]) { padding-bottom: 60px !important; }
+            body:not([data-print-tab="gantt"]) #print-footer { 
                 display: flex !important; 
                 justify-content: space-between;
                 align-items: flex-end;
@@ -1005,6 +1007,7 @@
             },
             switchTab(tab) {
                 this.currentTab = tab;
+                document.body.setAttribute('data-print-tab', tab); // 新增這行，控制列印時的排版
                 document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('bg-slate-800', 'text-white', 'shadow-lg'); b.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white'); });
                 const activeBtn = utils.$(`button[data-tab="${tab}"]`);
                 activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-lg'); activeBtn.classList.remove('text-slate-300');
@@ -1075,6 +1078,7 @@
         };
 
         app.init();
+        document.body.setAttribute('data-print-tab', 'todo'); // 預設加入狀態
     </script>
 </body>
 </html>
